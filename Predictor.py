@@ -23,7 +23,7 @@ def predictor():
     input_predictor = Input(shape=original_dim_C, name="original_input")
 
     # Use the custom reshape layer
-    input_predictor_C = ReshapeLayer(original_dim_C)(input_predictor)
+    input_predictor_C = ReshapeLayer.ReshapeLayer(original_dim_C)(input_predictor)
 
     predictor_inputs = input_predictor_C
 

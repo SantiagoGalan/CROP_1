@@ -1,273 +1,88 @@
 import numpy as np
 import tensorflow as tf
-from keras import layers
-from keras.layers import  Concatenate
-from keras.datasets import mnist
-from tensorflow.keras.losses import MeanSquaredError, BinaryCrossentropy
-mse = MeanSquaredError()
-binary_crossentropy = BinaryCrossentropy()
-from keras import backend as K
-import matplotlib as mplt
-import matplotlib.pyplot as plt
-import Predictor
 import PNSR
-import importlib
-importlib.reload(PNSR)
+import SSIM
 
+def outcomes(
+    x_decoded_1, x_decoded_2, x_mix_filtrado_1, x_mix_filtrado_2, x_mix_orig,
+    x, x_1, y, y_1, predictor
+):
+    """
+    Evalúa los resultados de la reconstrucción y filtrado de imágenes.
 
-# Function *******************************************************
-# OUTCOMES LIMPIO----------------
+    Parámetros:
+    -----------
+    x_decoded_1, x_decoded_2 : np.ndarray
+        Imágenes decodificadas por el modelo.
+    x_mix_filtrado_1, x_mix_filtrado_2 : np.ndarray
+        Imágenes filtradas.
+    x_mix_orig : np.ndarray
+        Imagen mezclada original.
+    x, x_1 : np.ndarray
+        Imágenes originales.
+    y, y_1 : np.ndarray
+        Etiquetas originales (one-hot o enteros).
+    predictor : modelo keras
+        Modelo para predecir la condición.
 
-  # def function "outcomes" --------------------------------------------------
-def outcomes(x_decoded_1, x_decoded_2, x_mix_filtrado_1, x_mix_filtrado_2, x_mix_orig, x, x_1, y, y_1,predictor):
-  print("x_decoded_1 dim\n")
-  print(x_decoded_1.shape)
+    Retorna:
+    --------
+    x_best_predicted_1 : np.ndarray
+        Mejor imagen según predicción.
+    y_predicted_1_f, y_predicted_2_f : np.ndarray
+        Predicciones de las imágenes filtradas.
+    """
+
+    # Chequeo de dimensiones
+    n = x.shape[0]
+    for arr in [x_decoded_1, x_decoded_2, x_mix_filtrado_1, x_mix_filtrado_2, x_mix_orig, x_1, y, y_1]:
+        if arr.shape[0] != n:
+            raise ValueError(f"Todos los arrays deben tener la misma cantidad de muestras. Esperado {n}, recibido {arr.shape[0]}.")
+
+    # Predicciones
+    y_predicted_1_f = tf.math.argmax(predictor.predict(x_mix_filtrado_1), 1)
+    y_predicted_2_f = tf.math.argmax(predictor.predict(x_mix_filtrado_2), 1)
+    y_predicted_mix_orig = tf.math.argmax(predictor.predict(x_mix_orig), 1)
+    y_predicted = tf.math.argmax(predictor.predict(x), 1)
+    y_predicted_1 = tf.math.argmax(predictor.predict(x_1), 1)
+    y_reduced = tf.math.argmax(y, 1) if y.ndim > 1 else y
+    y_1_reduced = tf.math.argmax(y_1, 1) if y_1.ndim > 1 else y_1
+
+    # Selección de la mejor imagen según MSE
+    #mse_x = tf.keras.metrics.mean_squared_error(tf.reshape(x, (n, -1)), tf.reshape(x_decoded_1, (n, -1)))
+    #mse_x1 = tf.keras.metrics.mean_squared_error(tf.reshape(x_1, (n, -1)), tf.reshape(x_decoded_1, (n, -1)))
+
+    #mse_x = tf.math.mean_squared_error(tf.reshape(x, (n, -1)), tf.reshape(x_decoded_1, (n, -1)))
+    #mse_x1 = tf.math.mean_squared_error(tf.reshape(x_1, (n, -1)), tf.reshape(x_decoded_1, (n, -1)))
+    #mse_x = tf.math.reduce_mean(tf.keras.metrics.MSE(x, x_decoded_1))
+    #mse_x1 = tf.math.reduce_mean(tf.keras.metrics.MSE(x_1, x_decoded_1))
   
-  
-  if x_decoded_1.ndim == 2:
-      x_decoded_1 = np.expand_dims(x_decoded_1, axis=0)  # (1, 28, 28)
-      #x_mix_filtrado_1 = np.expand_dims(x_mix_filtrado_1, axis=-1) # (1, 28, 28, 1)
-  print("x_decoded_1 dim\n")
-  print(x_decoded_1.shape)
-  if x_decoded_2.ndim == 2:
-    x_decoded_2 = np.expand_dims(x_decoded_2, axis=0)  # (1, 28, 28)
-    #x_mix_filtrado_1 = np.expand_dims(x_mix_filtrado_1, axis=-1) # (1, 28, 28, 1)
-  if x_mix_filtrado_1.ndim == 2:
-    x_mix_filtrado_1 = np.expand_dims(x_mix_filtrado_1, axis=0)  # (1, 28, 28)
-    #x_mix_filtrado_1 = np.expand_dims(x_mix_filtrado_1, axis=-1) # (1, 28, 28, 1)
-  if x_mix_filtrado_2.ndim == 2:
-    x_mix_filtrado_2 = np.expand_dims(x_mix_filtrado_2, axis=0)  # (1, 28, 28)
-    #x_mix_filtrado_1 = np.expand_dims(x_mix_filtrado_1, axis=-1) # (1, 28, 28, 1)
-  if x_mix_orig.ndim == 2:
-    x_mix_orig = np.expand_dims(x_mix_orig, axis=0)  # (1, 28, 28)
-    #x_mix_filtrado_1 = np.expand_dims(x_mix_filtrado_1, axis=-1) # (1, 28, 28, 1)
-  if x.ndim == 2:
-    x = np.expand_dims(x, axis=0)  # (1, 28, 28)
-    #x_mix_filtrado_1 = np.expand_dims(x_mix_filtrado_1, axis=-1) # (1, 28, 28, 1)
-  if x_1.ndim == 2:
-    x_1 = np.expand_dims(x_1, axis=0)  # (1, 28, 28)
-    #x_mix_filtrado_1 = np.expand_dims(x_mix_filtrado_1, axis=-1) # (1, 28, 28, 1)
-  print("Dimensiones de x \n")
-  print(x.shape)
-  print(x_1.shape)
+    #select = tf.cast(mse_x < mse_x1, tf.float32)
+    #select_1 = 1.0 - select
+    
+    # Calcula el MSE por muestra
+    mse_x = tf.reduce_mean(tf.square(tf.reshape(x, (n, -1)) - tf.reshape(x_decoded_1, (n, -1))), axis=1)
+    mse_x1 = tf.reduce_mean(tf.square(tf.reshape(x_1, (n, -1)) - tf.reshape(x_decoded_1, (n, -1))), axis=1)
 
-  
-  
-  
-  
-  # Outcomes ---------------------------------------------------------------------
-  y_predicted_1         = tf.math.argmax(predictor.predict(x_decoded_1), 1)
-  y_predicted_2         = tf.math.argmax(predictor.predict(x_decoded_2), 1)
-  y_predicted_1_f       = tf.math.argmax(predictor.predict(x_mix_filtrado_1), 1)
-  y_predicted_2_f       = tf.math.argmax(predictor.predict(x_mix_filtrado_2), 1)
-  y_predicted_mix       = tf.math.argmax(predictor.predict(x_mix_filtrado_1), 1)          #### REVISAR
-  y_predicted_mix_orig  = tf.math.argmax(predictor.predict(x_mix_orig), 1)
-  y_predicted      = tf.math.argmax(predictor.predict(x), 1)
-  y_predicted_1    = tf.math.argmax(predictor.predict(x_1), 1)
-  y_1_reduced      = tf.math.argmax(y_1, 1)
-  y_reduced        = tf.math.argmax(y)
-  
-    # Select the best image based on MSE
-  select     = tf.cast(tf.math.less(tf.keras.metrics.MSE(x, x_decoded_1), tf.keras.metrics.MSE(x_1, x_decoded_1)), tf.float32)
-  select_1   = tf.cast(tf.math.greater_equal(tf.keras.metrics.MSE(x, x_decoded_1), tf.keras.metrics.MSE(x_1, x_decoded_1)), tf.float32)
-  select     = tf.expand_dims(select, 1)
-  select_1   = tf.expand_dims(select_1, 1)
-  x_best_MSE = (x * select) + (x_1 * select_1)
+    # Asegura que select sea un vector
+    select = tf.cast(mse_x < mse_x1, tf.float32)
+    select_1 = 1.0 - select
 
-    # Select the best image based on y_predicted_1_f (y or y_1)
-  select_1   = tf.cast(tf.math.equal(y_reduced, y_predicted_1_f), tf.int64)           # y   = y_predicted_1_f
-  select_1_1 = tf.cast(tf.math.equal(y_1_reduced, y_predicted_1_f), tf.int64)         # y_1 = y_predicted_1_f
-  select_2   = tf.cast(tf.math.equal(y_reduced, y_predicted_2_f), tf.int64)           # y   = y_predicted_2_f
-  select_2_1 = tf.cast(tf.math.equal(y_1_reduced, y_predicted_2_f), tf.int64)         # y_1 = y_predicted_2_f
-  print("select_1:      ", select_1)
-  print("select_1_1:    ", select_1_1)
-  #  select_equal = tf.cast(tf.math.equal(select, select_1), tf.int64)
-  y_s1   = y_reduced * select_1
-  y_1_s1 = y_1_reduced * select_1_1
-  y_s2   = y_reduced * select_2
-  y_1_s2 = y_1_reduced * select_2_1
+    # Solo expande si tiene al menos 1 dimensión
+    # Expande a [n, 1, 1] para que sea compatible con [n, 28, 28]
+    select = tf.reshape(select, (-1, 1, 1))
+    select_1 = tf.reshape(select_1, (-1, 1, 1))
 
-  select_1_AND = select_1 * select_1_1
-  select_1_OR = select_1 + select_1_1 - select_1_AND
-  select_2_AND = select_2 * select_2_1
-  select_2_OR = select_2 + select_2_1 - select_2_AND
-  s_best_AND = select_1_OR * select_2_OR
-  s_best_OR  = select_1_OR + select_2_OR - s_best_AND
-  select_reduced = tf.cast(tf.math.not_equal(y_reduced, y_1_reduced), tf.int64)
-  select_12_f = tf.cast(tf.math.equal(y_predicted_1_f, y_predicted_2_f), tf.int64)
-  s_reduced_12_f_AND = select_reduced * select_12_f
-  s_best_AND_AND = s_best_AND - s_reduced_12_f_AND
+    x_best_MSE = (x * select) + (x_1 * select_1)
+    
+    #select = tf.expand_dims(select, 1)
+    #select_1 = tf.expand_dims(select_1, 1)
+    #x_best_MSE = (x * select) + (x_1 * select_1)
 
-    #First predicted digit is equal to any of the original two digits --------------------------
-  s_best_s1         = tf.cast(tf.math.greater_equal(y_s1, y_1_s1), tf.int64)
-  s_1_best_s1       = tf.cast(tf.math.less(y_s1, y_1_s1), tf.int64)
-  y_best_predicted_1 = s_best_s1 * y_s1 + s_1_best_s1 * y_1_s1
+    # Métricas de calidad
+    bpsnr_mean, bpsnr_std = PNSR.batched_psnr(x, x_1, x_mix_filtrado_1, x_mix_filtrado_2)
+    bssim_mean, bssim_std = SSIM.batched_ssim(x, x_1, x_mix_filtrado_1, x_mix_filtrado_2)
+    print("PSNR mean:", bpsnr_mean.numpy(), "SSIM mean:", bssim_mean.numpy())
 
-  # select = tf.cast(select, tf.float32)                                # ésta está mal?
-  # select_1 = tf.cast(select_1, tf.float32)                            # ésta está mal?
-  select_1           = tf.cast(s_best_s1, tf.float32)                  # se corrigió (ésta es la correcta)
-  select_1_1         = tf.cast(s_1_best_s1, tf.float32)                # se corrigió (ésta es la correcta)
-  select_1           = tf.expand_dims(select_1, 1)
-  select_1_1         = tf.expand_dims(select_1_1, 1)
-  '''
-  (55000, 784)
-  (55000, 784)
-  (55000, 1)
-  (55000, 1)
-  '''
-  print("formas de x y select_1\n")
-  print(x.shape)
-  print(x_1.shape)
-  print(select_1.shape)
-  print(select_1_1.shape)
-  
-  #x_best_predicted_1 = (x * select_1) + (x_1 * select_1_1) #??
-
-    #Second predicted digit is equal to any of the original two digits --------------------------
-  s_best_s2         = tf.cast(tf.math.greater_equal(y_s2, y_1_s2), tf.int64)
-  s_1_best_s2       = tf.cast(tf.math.less(y_s2, y_1_s2), tf.int64)
-  y_best_predicted_2 = s_best_s2 * y_s2 + s_1_best_s2 * y_1_s2
-
-  # select = tf.cast(select, tf.float32)                                # ésta está mal?
-  # select_1 = tf.cast(select_1, tf.float32)                            # ésta está mal?
-  select_1           = tf.cast(s_best_s2, tf.float32)                  # se corrigió (ésta es la correcta)
-  select_1_1         = tf.cast(s_1_best_s2, tf.float32)                # se corrigió (ésta es la correcta)
-  select_1           = tf.expand_dims(select_1, 1)
-  select_1_1         = tf.expand_dims(select_1_1, 1)
-  #x_best_predicted_2 = (x * select_1) + (x_1 * select_1_1)
-
-  print("y_reduced:   ", y_reduced)
-  print("y_1_reduced: ", y_1_reduced)
-  print("y_s1:         ", y_s1)
-  print("y_1_s1:        ", y_1_s1)
-  print("s_best_s1:    ", s_best_s1)
-  print("s_1_best_s1:   ", s_1_best_s1)
-  print("y_best_predicted_1:      ", y_best_predicted_1)
-  print("y_predicted_mix:  ", y_predicted_mix)
-  print("y_predicted_1_f:    ", y_predicted_1_f)
-  print("y_predicted_2_f:    ", y_predicted_2_f)
-
-    # Select the best image based on y_predicted_mix_orig (y or y_1)
-  select = tf.cast(tf.math.equal(y_reduced, y_predicted_mix_orig), tf.int64)
-  select_1 = tf.cast(tf.math.equal(y_1_reduced, y_predicted_mix_orig), tf.int64)
-  y_s = y_reduced * select
-  y_s1 = y_1_reduced * select_1
-  s_best_s = tf.cast(tf.math.greater_equal(y_s, y_s1), tf.int64)
-  s_best_s1 = tf.cast(tf.math.less(y_s, y_s1), tf.int64)
-  y_best = s_best_s * y_s + s_best_s1 * y_s1
-
-  print("y_reduced:       ", y_reduced)
-  print("y_1_reduced:     ", y_1_reduced)
-  print("y_s:             ", y_s)
-  print("y_s1:            ", y_s1)
-  print("s_best_s:        ", s_best_s)
-  print("s_best_s1:       ", s_best_s1)
-  print("y_best:          ", y_best)
-  print("y_predicted_mix:      ", y_predicted_mix)
-  print("y_predicted_1_f:        ", y_predicted_1_f)
-  print("y_predicted_mix_orig: ", y_predicted_mix_orig)
-
-
-    # MSE ------------------------------------------------------------------------
-  MSE = tf.math.reduce_mean(tf.keras.metrics.MSE(x, x_decoded_1))
-  print("MSE: ", MSE.numpy())
-  MSE_1 = tf.math.reduce_mean(tf.keras.metrics.MSE(x_1, x_decoded_1))
-  print("MSE_1: ", MSE_1.numpy())
-  MSE_mix = tf.math.reduce_mean(tf.keras.metrics.MSE(x_mix_filtrado_1, x_decoded_1))
-  print("MSE_mix: ", MSE_mix.numpy())
-  MSE_mix_orig = tf.math.reduce_mean(tf.keras.metrics.MSE(x_mix_orig, x_decoded_1))                 # added
-  print("MSE_mix_orig: ", MSE_mix_orig.numpy())
-  MSE_mix_best_MSE = tf.math.reduce_mean(tf.keras.metrics.MSE(x_best_MSE, x_decoded_1))
-  print("MSE_mix_best_MSE: ", MSE_mix_best_MSE.numpy())
-  #MSE_mix_best_predicted = tf.math.reduce_mean(tf.keras.metrics.MSE(x_best_predicted_1, x_decoded_1))
-  #print("MSE_mix_best_predicted: ", MSE_mix_best_predicted.numpy())
-  MSE_mix_orig_mix = tf.math.reduce_mean(tf.keras.metrics.MSE(x_mix_orig, x_mix_filtrado_1))            # added
-  print("MSE_mix_orig_mix: ", MSE_mix_orig_mix.numpy())
-
-    # Accuracy -------------------------------------------------------------------
-  m = tf.keras.metrics.Accuracy()
-  m.reset_state()
-  m.update_state(y_predicted, y_reduced)
-  print("Accuracy(y_predicted, y_reduced): ", m.result().numpy())
-  m.reset_state()
-  m.update_state(y_predicted_mix, y_reduced)
-  print("Accuracy(y_predicted_mix, y_reduced): ", m.result().numpy())
-  m.reset_state()
-  m.update_state(y_predicted_mix, y_1_reduced)
-  print("Accuracy(y_predicted_mix, y_1_reduced): ", m.result().numpy())
-  m.reset_state()
-  m.update_state(y_predicted_1_f, y_reduced)
-  print("Accuracy(y_predicted_1_f, y_reduced): ", m.result().numpy())
-  m.reset_state()
-  m.update_state(y_predicted_1_f, y_1_reduced)
-  print("Accuracy(y_predicted_1_f, y_1_reduced): ", m.result().numpy())
-  m.reset_state()
-  m.update_state(y_predicted_mix, y_best_predicted_1)
-  print("Accuracy(y_predicted_mix, y_best_predicted_1): ", m.result().numpy())
-  m.reset_state()
-  m.update_state(y_predicted_1_f, y_best_predicted_1)
-  print("Accuracy(y_predicted_1_f, y_best_predicted_1): ", m.result().numpy())
-  m.reset_state()
-  m.update_state(y_predicted_2_f, y_best_predicted_2)
-  print("Accuracy(y_predicted_2_f, y_best_predicted_2): ", m.result().numpy())
-  m.reset_state()
-  m.update_state(y_predicted_mix_orig, y_best_predicted_1)
-  print("Accuracy(y_predicted_mix_orig, y_best_predicted_1): ", m.result().numpy())
-
-    # Global accuracy -----------------------------------------------------------------------
-
-  L = 60
-
-  mask = tf.ones_like(select_1_OR)
-  m.reset_state()
-  m.update_state(select_1_OR, mask)
-  print("Accuracy(select_1_OR, mask): ", m.result().numpy())
-
-  mask = tf.ones_like(select_2_OR)
-  m.reset_state()
-  m.update_state(select_2_OR, mask)
-  print("Accuracy(select_2_OR, mask): ", m.result().numpy())
-
-  mask = tf.ones_like(s_best_OR)
-  m.reset_state()
-  m.update_state(s_best_OR, mask)
-  print("Accuracy(s_best_OR, mask): ", m.result().numpy())
-
-  select_reduced = tf.cast(tf.math.not_equal(y_reduced, y_1_reduced), tf.int64)
-  select_12_f = tf.cast(tf.math.equal(y_predicted_1_f, y_predicted_2_f), tf.int64)
-  s_reduced_12_f_AND = select_reduced * select_12_f
-  s_best_AND_AND = (s_best_AND - s_reduced_12_f_AND) * select_1_OR
-
-  m.reset_state()
-  m.update_state(s_best_AND_AND, mask)
-  print("Accuracy(s_best_AND_AND, mask): ", m.result().numpy())
-
-
-  #print(y_reduced[0:L])
-  print(y_1_reduced[0:L])
-  print(tf.math.argmax(predictor.predict(x_mix_filtrado_1), 1)[0:L])
-  print(tf.math.argmax(predictor.predict(x_mix_filtrado_2), 1)[0:L])
-
-
-  ###### ACÁ VA SSIM ##############################################################
-
-
-  ###### ACÁ VA PSNR ##############################################################
-
-  gt1    = x
-  gt2    = x_1
-  gt_mix = x_mix_orig
-  gen1   = x_mix_filtrado_1
-  gen2   = x_mix_filtrado_2
-  gen1_d = x_decoded_1
-  gen2_d = x_decoded_2
-
-  bpsnr_mean   = PNSR.batched_psnr(gt1, gt2, gen1, gen2)
-  bpsnr_mean_d = PNSR.batched_psnr(gt1, gt2, gen1_d, gen2_d)
-  #bpsnr_mean_mix = PNSR.psnr_grayscale(gt_mix, preds)
-
-  print("bpsnr_mean = ", bpsnr_mean)
-  print("bpsnr_mean_d = ", bpsnr_mean_d)
-
-  x_best_predicted_1=1# agreado para testear el resto
-  return (x_best_predicted_1, y_predicted_1_f, y_predicted_2_f)
+    # Devuelve la mejor imagen y las predicciones filtradas
+    return x_best_MSE, y_predicted_1_f, y_predicted_2_f

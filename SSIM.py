@@ -1,3 +1,6 @@
+import numpy as np
+import tensorflow as tf
+import ReshapeLayer
 # SSIM definition
 # ssim2 = tf.image.ssim(im1, im2, max_val=1.0, filter_size=11,
 #                          filter_sigma=1.5, k1=0.01, k2=0.03)
@@ -21,8 +24,8 @@ def ssim_grayscale(target, preds):
     original_dim_C = (28, 28, 1)
 
     # Use the custom reshape layer
-    target_tensor_C = ReshapeLayer(original_dim_C)(target_tensor)
-    preds_tensor_C = ReshapeLayer(original_dim_C)(preds_tensor)
+    target_tensor_C = ReshapeLayer.ReshapeLayer(original_dim_C)(target_tensor)
+    preds_tensor_C = ReshapeLayer.ReshapeLayer(original_dim_C)(preds_tensor)
     target_tensor = target_tensor_C
     preds_tensor = preds_tensor_C
 
@@ -63,7 +66,7 @@ def batched_ssim(gt1, gt2, gen1, gen2):
 
     return bssim_mean, bssim_std
 
-
+'''
 gt1 = x_test
 gt2 = x_test_1
 gen1 = x_test_mix_filtrado_1
@@ -75,3 +78,4 @@ bssim_mean, bssim_std = batched_ssim(gt1, gt2, gen1, gen2)
 # Print the results
 print("Batched SSIM Mean:", bssim_mean.numpy())
 print("Batched SSIM Standard Deviation:", bssim_std.numpy())
+'''
