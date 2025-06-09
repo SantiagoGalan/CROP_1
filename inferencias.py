@@ -72,8 +72,8 @@ def inferncia_modelo(x_train, x_train_1, y_train, predictor, encoder, decoder, y
     bias = 0.22
     slope = 22.
     beta = 1.
-    alpha_1 = -2
-    alpha_2 = -22
+    alpha_1 = -2 #?
+    alpha_2 = -22 #?
 
     # Visualiza las imágenes originales y la mezcla inicial
     mostrar_imagenes("Imagen original 1", x_train)

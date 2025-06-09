@@ -10,6 +10,7 @@ import matplotlib as mplt
 import matplotlib.pyplot as plt
 from keras.utils import to_categorical
 
+
 # Actually training the model.
 def train(model, x_train, y_train, x_val, y_val):
     #cp_callback = cp_callback
@@ -56,3 +57,5 @@ def train(model, x_train, y_train, x_val, y_val):
     #vae.save_weights(vae_dense_256_checkpoint_path)         #buscar como se guarda el modelo 
 
     return model
+
+

@@ -53,15 +53,4 @@ def Vae(encoder, decoder, show_model=False):
         plot_model(vae, to_file="vae.png", show_shapes=True, show_layer_names=True)
         display(Image(filename="vae.png"))
 
-    # Wrapper para permitir pasar solo dos entradas (imagen y condición)
-    def vae_predict(inputs, *args, **kwargs):
-        # Si solo se pasan dos entradas, usa la misma condición para encoder y decoder
-        if isinstance(inputs, list) and len(inputs) == 2:
-            img, cond = inputs
-            return vae.predict([img, cond, cond], *args, **kwargs)
-        else:
-            return vae.predict(inputs, *args, **kwargs)
-
-    vae.predict_with_default_cond = vae_predict
-
     return vae
