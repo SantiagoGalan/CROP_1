@@ -1,5 +1,7 @@
 import numpy as np
 import tensorflow as tf
+import Encoder
+import Decoder
 from keras.layers import Lambda, Input, Dense, Concatenate
 from keras.models import Model
 from keras import backend as K
@@ -54,3 +56,10 @@ def Vae(encoder, decoder, show_model=False):
         display(Image(filename="vae.png"))
 
     return vae
+
+
+def definir_modelo(x_train, y_train, intermediate_dim=128 , latent_dim = 2, show_model=False):
+    encoder = Encoder.encoder(x_train, y_train, intermediate_dim = intermediate_dim, latent_dim = latent_dim, show_model=False)
+    decoder = Decoder.decoder(x_train, y_train, intermediate_dim = intermediate_dim, latent_dim = latent_dim, show_model=False)
+    return Vae(encoder, decoder, show_model=False)
+    

@@ -1,11 +1,21 @@
 import numpy as np
 import tensorflow as tf
 from keras.datasets import mnist
+from tensorflow.keras.datasets import fashion_mnist
 
 def data_acquisition(MIX="AVERAGE"):
     # Carga el dataset MNIST (imágenes de dígitos manuscritos)
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
     print("x_train(60k).shape:      ", x_train.shape)
+    #
+
+    # Carga el dataset Fashion MNIST (imágenes de ropa)
+    #(x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+    #print("x_train(60k).shape:      ", x_train.shape)
+    #print("y_train.shape:           ", y_train.shape)
+    #print("x_test(10k).shape:       ", x_test.shape)
+
+
 
     # Normaliza las imágenes a valores entre 0 y 1
     x_train = x_train.astype('float32') / 255

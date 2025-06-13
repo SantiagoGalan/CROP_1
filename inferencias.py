@@ -8,7 +8,7 @@ import importlib
 
 importlib.reload(outcomes)
 
-def best_digit_var_sigmoid(x_mix_filtrado_2, x_mix_orig, alpha, bias, slope, predictor, encoder, decoder):
+def best_digit_var_sigmoid(x_mix_filtrado_2, x_mix_orig, alpha, bias, slope, predictor, encoder, decoder,vae):
     """
     Filtra y decodifica una imagen mezclada usando el encoder y decoder, aplicando un ajuste con parámetros alpha, bias y slope.
     """
@@ -21,9 +21,10 @@ def best_digit_var_sigmoid(x_mix_filtrado_2, x_mix_orig, alpha, bias, slope, pre
     condition_encoder = predictor.predict(x_mix_filtrado_1)
     condition_decoder_1 = condition_encoder
 
-    latent_inputs = encoder.predict([x_mix_filtrado_1, condition_encoder], verbose=0)
-    x_decoded_1 = decoder.predict([latent_inputs[2], condition_decoder_1], verbose=0)
-
+    #latent_inputs = encoder.predict([x_mix_filtrado_1, condition_encoder], verbose=0)
+    #x_decoded_1 = decoder.predict([latent_inputs[2], condition_decoder_1], verbose=0)
+    x_decoded_1 = vae.predict([x_mix_filtrado_1, condition_encoder, condition_decoder_1], verbose=0)
+    
     x_decoded_1 = (x_decoded_1 - bias) * slope
     x_decoded_1 = tf.sigmoid(x_decoded_1)
     x_decoded_1 = np.squeeze(x_decoded_1)
@@ -33,24 +34,37 @@ def best_digit_var_sigmoid(x_mix_filtrado_2, x_mix_orig, alpha, bias, slope, pre
 
     return (x_mix_filtrado_1, x_decoded_1)
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 def mostrar_imagenes(titulo, imagenes, etiquetas=None, n=5):
-    """
-    Visualiza un conjunto de imágenes con sus etiquetas.
-    """
-    plt.figure(figsize=(n * 2, 2))
-    for i in range(n):
+    # Convertir a array de NumPy si es tensor
+    if hasattr(imagenes, "numpy"):
+        imagenes = imagenes.numpy()
+    
+    # Si es una sola imagen (2D o 1D), convertirla a lote de 1 imagen
+    if imagenes.ndim == 2 or imagenes.ndim == 1:
+        imagenes = np.expand_dims(imagenes, axis=0)
+        if etiquetas is not None and not isinstance(etiquetas, (list, np.ndarray)):
+            etiquetas = [etiquetas]
+
+    cantidad = min(n, imagenes.shape[0])
+    plt.figure(figsize=(cantidad * 2, 2))
+    for i in range(cantidad):
         img = imagenes[i]
-        if hasattr(img, "numpy"):
-            img = img.numpy()
-        plt.subplot(1, n, i + 1)
-        plt.imshow(img.reshape(28, 28), cmap='gray')
-        if etiquetas is not None:
+        # Convertir imagen plana (784,) a 28x28 si es necesario
+        if img.ndim == 1:
+            img = img.reshape(28, 28)
+        plt.subplot(1, cantidad, i + 1)
+        plt.imshow(img, cmap='gray')
+        if etiquetas is not None and i < len(etiquetas):
             plt.title(str(etiquetas[i]))
         plt.axis('off')
     plt.suptitle(titulo)
     plt.show()
 
-def inferncia_modelo(x_train, x_train_1, y_train, predictor, encoder, decoder, y_train_1):
+
+def inferncia_modelo(x_train, x_train_1, y_train, predictor, encoder, decoder, y_train_1,vae):
     """
     Realiza inferencias iterativas sobre imágenes mezcladas, filtrando y decodificando en cada paso,
     y calcula métricas de calidad (PSNR y SSIM) entre las imágenes originales y generadas.
@@ -82,18 +96,19 @@ def inferncia_modelo(x_train, x_train_1, y_train, predictor, encoder, decoder, y
 
     for j in range(Iterations):
         x_train_mix_filtrado_1, x_train_decoded_1 = best_digit_var_sigmoid(
-            x_train_mix_filtrado_2, x_train_mix_orig, alpha_2, bias, slope, predictor, encoder, decoder)
+            x_train_mix_filtrado_2, x_train_mix_orig, alpha_2, bias, slope, predictor, encoder, decoder,vae)
         alpha_2 = alpha_2 * beta
 
         x_train_mix_filtrado_2, x_train_decoded_2 = best_digit_var_sigmoid(
-            x_train_mix_filtrado_1, x_train_mix_orig, alpha_1, bias, slope, predictor, encoder, decoder)
+            x_train_mix_filtrado_1, x_train_mix_orig, alpha_1, bias, slope, predictor, encoder, decoder,vae)
         alpha_1 = alpha_1 * beta
 
         print(f"ITERACIÓN A: {j}")
-
+        
         # Visualiza resultados intermedios de la inferencia
         mostrar_imagenes(f"Iteración {j+1} - x_mix_filtrado_1", x_train_mix_filtrado_1)
         mostrar_imagenes(f"Iteración {j+1} - x_mix_filtrado_2", x_train_mix_filtrado_2)
+        print(x_train_decoded_1.shape)
         mostrar_imagenes(f"Iteración {j+1} - x_decoded_1", x_train_decoded_1)
         mostrar_imagenes(f"Iteración {j+1} - x_decoded_2", x_train_decoded_2)
 
