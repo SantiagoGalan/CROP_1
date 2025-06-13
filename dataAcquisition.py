@@ -5,15 +5,15 @@ from tensorflow.keras.datasets import fashion_mnist
 
 def data_acquisition(MIX="AVERAGE"):
     # Carga el dataset MNIST (imágenes de dígitos manuscritos)
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
-    print("x_train(60k).shape:      ", x_train.shape)
+    #(x_train, y_train), (x_test, y_test) = mnist.load_data()
+    #print("x_train(60k).shape:      ", x_train.shape)
     #
 
     # Carga el dataset Fashion MNIST (imágenes de ropa)
-    #(x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
-    #print("x_train(60k).shape:      ", x_train.shape)
-    #print("y_train.shape:           ", y_train.shape)
-    #print("x_test(10k).shape:       ", x_test.shape)
+    (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+    print("x_train(60k).shape:      ", x_train.shape)
+    print("y_train.shape:           ", y_train.shape)
+    print("x_test(10k).shape:       ", x_test.shape)
 
 
 

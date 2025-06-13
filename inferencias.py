@@ -65,6 +65,10 @@ def mostrar_imagenes(titulo, imagenes, etiquetas=None, n=5):
 
 
 def inferncia_modelo(x_train, x_train_1, y_train, predictor, encoder, decoder, y_train_1,vae):
+    
+    img_separada_1=[]
+    img_separada_2=[]
+    
     """
     Realiza inferencias iterativas sobre imágenes mezcladas, filtrando y decodificando en cada paso,
     y calcula métricas de calidad (PSNR y SSIM) entre las imágenes originales y generadas.
@@ -106,11 +110,11 @@ def inferncia_modelo(x_train, x_train_1, y_train, predictor, encoder, decoder, y
         print(f"ITERACIÓN A: {j}")
         
         # Visualiza resultados intermedios de la inferencia
-        mostrar_imagenes(f"Iteración {j+1} - x_mix_filtrado_1", x_train_mix_filtrado_1)
-        mostrar_imagenes(f"Iteración {j+1} - x_mix_filtrado_2", x_train_mix_filtrado_2)
-        print(x_train_decoded_1.shape)
-        mostrar_imagenes(f"Iteración {j+1} - x_decoded_1", x_train_decoded_1)
-        mostrar_imagenes(f"Iteración {j+1} - x_decoded_2", x_train_decoded_2)
+        #mostrar_imagenes(f"Iteración {j+1} - x_mix_filtrado_1", x_train_mix_filtrado_1)
+        #mostrar_imagenes(f"Iteración {j+1} - x_mix_filtrado_2", x_train_mix_filtrado_2)
+        #print(x_train_decoded_1.shape)
+        #mostrar_imagenes(f"Iteración {j+1} - x_decoded_1", x_train_decoded_1)
+        #mostrar_imagenes(f"Iteración {j+1} - x_decoded_2", x_train_decoded_2)
 
         # Evaluación de resultados
         _, y_train_predicted_1_f, y_train_predicted_2_f = outcomes.outcomes(
@@ -125,15 +129,16 @@ def inferncia_modelo(x_train, x_train_1, y_train, predictor, encoder, decoder, y
         gen2 = x_train_mix_filtrado_2
 
         # PSNR
-        bpsnr_mean, bpsnr_std = PNSR.batched_psnr(gt1, gt2, gen1, gen2)
-        print("Batched PSNR Mean:", bpsnr_mean.numpy())
-        print("Batched PSNR Std:", bpsnr_std.numpy())
+        #bpsnr_mean, bpsnr_std = PNSR.batched_psnr(gt1, gt2, gen1, gen2)
+        #print("Batched PSNR Mean:", bpsnr_mean.numpy())
+        #print("Batched PSNR Std:", bpsnr_std.numpy())
 
         # SSIM
-        bssim_mean, bssim_std = SSIM.batched_ssim(gt1, gt2, gen1, gen2)
-        print("Batched SSIM Mean:", bssim_mean.numpy())
-        print("Batched SSIM Std:", bssim_std.numpy())
+        #bssim_mean, bssim_std = SSIM.batched_ssim(gt1, gt2, gen1, gen2)
+        #print("Batched SSIM Mean:", bssim_mean.numpy())
+        #print("Batched SSIM Std:", bssim_std.numpy())
 
     # Visualiza las imágenes separadas finales
+        
     mostrar_imagenes("Imagen separada final 1 (x_decoded_1)", x_train_decoded_1)
     mostrar_imagenes("Imagen separada final 2 (x_decoded_2)", x_train_decoded_2)

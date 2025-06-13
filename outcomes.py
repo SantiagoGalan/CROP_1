@@ -37,8 +37,6 @@ def outcomes(
     n = x.shape[0]
     
     for arr in [x_decoded_1, x_decoded_2, x_mix_filtrado_1, x_mix_filtrado_2, x_mix_orig, x_1, y, y_1]:
-        for a in arr:
-            print(a.shape)
         if arr.shape[0] != n:
             raise ValueError(f"Todos los arrays deben tener la misma cantidad de muestras. Esperado {n}, recibido {arr.shape[0]}.")
 
