@@ -7,7 +7,7 @@ from ReparameterizationTrick import Sampling  # Clase para el truco de reparamet
 from keras.utils import plot_model
 from IPython.display import Image, display
 
-def encoder(x_train, y_train, intermediate_dim=128, latent_dim=2, show_model=False):
+def encoder(x_train, y_train, intermediate_dim=128, latent_dim=2, show_model=False): 
     """
     Construye el modelo encoder para un VAE condicional.
 

@@ -86,12 +86,12 @@ def inferncia_modelo(x_train, x_train_1, y_train, predictor, encoder, decoder, y
     x_train_mix_filtrado_2 = x_train_mix
     x__x = tf.zeros_like(x_train_mix)
 
-    Iterations = 3
-    bias = 0.22
-    slope = 22.
+    Iterations = 10
+    bias = 0.22 #
+    slope = 22. #"entrenamiento de inferencias? para encontrar b y s "
     beta = 1.
-    alpha_1 = -2 #?
-    alpha_2 = -22 #?
+    alpha_1 = -2 #? 
+    alpha_2 = -22 #?  ver si se usa en el collab. 
 
     # Visualiza las imágenes originales y la mezcla inicial
     mostrar_imagenes("Imagen original 1", x_train)
@@ -140,5 +140,5 @@ def inferncia_modelo(x_train, x_train_1, y_train, predictor, encoder, decoder, y
 
     # Visualiza las imágenes separadas finales
         
-    mostrar_imagenes("Imagen separada final 1 (x_decoded_1)", x_train_decoded_1)
-    mostrar_imagenes("Imagen separada final 2 (x_decoded_2)", x_train_decoded_2)
+    mostrar_imagenes("Imagen separada final 1 (x_decoded_1)", x_train_mix_filtrado_1)
+    mostrar_imagenes("Imagen separada final 2 (x_decoded_2)", x_train_mix_filtrado_2)
