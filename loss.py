@@ -14,9 +14,6 @@ def vae_loss(y_true, y_pred):
   #binary_crossentropy = BinaryCrossentropy()
   
   Beta = 1.                                                          # Beta-VAE
-  #z_mean = y_pred[0]
-  #z_log_var = y_pred[1]
-  # z = y_pred[2]
 
   kl_loss = -0.5 * (z_log_var - tf.square(z_mean) - tf.exp(z_log_var) + 1)
   kl_loss = tf.reduce_sum(kl_loss, -1)
