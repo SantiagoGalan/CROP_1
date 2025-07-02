@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-import ReshapeLayer
+import layers.ReshapeLayer as ReshapeLayer
 # SSIM definition
 # ssim2 = tf.image.ssim(im1, im2, max_val=1.0, filter_size=11,
 #                          filter_sigma=1.5, k1=0.01, k2=0.03)

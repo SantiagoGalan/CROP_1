@@ -1,7 +1,7 @@
 from tensorflow.keras.layers import Layer
 import numpy as np
 import tensorflow as tf
-from keras.layers import Lambda, Input, Dense, Concatenate, Conv2D, Flatten
+from keras.layers import Lambda, Input, Dense, Concatenate, Conv2D, Flatten, Dropout, BatchNormalization
 from keras.models import Model
 from keras import backend as K
 from ReparameterizationTrick import Sampling  # Asegúrate de que el archivo esté en el mismo directorio
@@ -11,9 +11,10 @@ from ReparameterizationTrick import Sampling  # Asegúrate de que el archivo est
 from keras.utils import plot_model
 from IPython.display import Image, display
 
-import ReshapeLayer
+import layers.ReshapeLayer as ReshapeLayer
     ## Predictor CONVOLUCIONAL ---------------------------------------------------------------------
 
+'''
 def predictor():
     # network parameters
     original_dim_C = (28, 28, 1)                                                       # ¿agregar condición?
@@ -42,3 +43,37 @@ def predictor():
 
     display(Image(filename="predictor.png"))
     return predictor_C
+'''
+def predictor():
+    original_dim_C = (28, 28, 1)                                                       # ¿agregar condición?
+    original_dim = 28 * 28
+
+    n_cond = 10
+
+    # Define the input layer
+    # Define predictor model ---------------------------------------------------------
+    input_predictor = Input(shape=(original_dim,), name="original_input")
+
+    # Use the custom reshape layer
+    input_predictor_C = ReshapeLayer.ReshapeLayer(original_dim_C)(input_predictor)
+
+    predictor_inputs = input_predictor_C
+    '''
+    x = layers.Conv2D(32, 3, activation="relu", strides=2, padding="same")(predictor_inputs)
+    x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
+    x = layers.Flatten()(x)
+    predictor_outputs = Dense(n_cond, activation="softmax")(x)
+    '''
+    x = Conv2D(32, 3, activation="relu", strides=2, padding="same")(predictor_inputs)
+    x = BatchNormalization()(x)  # Add batch normalization
+    x = Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
+    x = BatchNormalization()(x)  # Add batch normalization
+    x = Flatten()(x)
+    x = Dropout(0.5)(x)  # Add dropout
+    predictor_outputs = Dense(n_cond, activation="softmax")(x)
+
+    # instantiate decoder model
+
+    predictor_C2 = Model(inputs=input_predictor, outputs=predictor_outputs, name="predictor_C2")
+    predictor_C2.summary()
+    return predictor_C2

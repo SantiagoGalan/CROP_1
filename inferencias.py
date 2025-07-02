@@ -60,11 +60,11 @@ def best_digit_var_sigmoid(x_mix_filtrado_2, x_mix_orig, alpha, bias, slope, pre
     
     x_mix_filtrado_1 = (2 * x_mix_orig - x_mix_filtrado_2)
     x_mix_filtrado_1 = tf.clip_by_value(x_mix_filtrado_1, clip_value_min=0, clip_value_max=1)
-    
+
     #mostrar_imagenes("x_mix_filtrado_1",x_mix_filtrado_1)
 
-    if x_mix_filtrado_1.ndim == 2:
-        x_mix_filtrado_1 = np.expand_dims(x_mix_filtrado_1, axis=0)
+    #if x_mix_filtrado_1.ndim == 2:
+    #    x_mix_filtrado_1 = np.expand_dims(x_mix_filtrado_1, axis=0)
 
     condition_encoder = predictor.predict(x_mix_filtrado_1)
     condition_decoder_1 = condition_encoder
@@ -126,7 +126,6 @@ def inferncia_modelo(x_train, x_train_1, y_train, predictor, encoder, decoder, y
     
     img_separada_1=[]
     img_separada_2=[]
-    
     """
     Realiza inferencias iterativas sobre imágenes mezcladas, filtrando y decodificando en cada paso,
     y calcula métricas de calidad (PSNR y SSIM) entre las imágenes originales y generadas.
@@ -157,6 +156,9 @@ def inferncia_modelo(x_train, x_train_1, y_train, predictor, encoder, decoder, y
         #print(f"Numero de iteración {j}\n")
         #print("="*60)
         #print("best_digit_var_sigmoid primera vez \n")
+        print(x_train_mix_filtrado_2.shape)
+        print(x_train_mix_orig.shape)        
+        
         x_train_mix_filtrado_1, x_train_decoded_1 = best_digit_var_sigmoid(
             x_train_mix_filtrado_2, x_train_mix_orig, alpha_2, bias, slope, predictor, encoder, decoder,vae)
         alpha_2 = alpha_2 * beta

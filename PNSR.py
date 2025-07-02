@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-import ReshapeLayer
+import layers.ReshapeLayer as ReshapeLayer
 
 def psnr_grayscale(target, preds):
     """

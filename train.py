@@ -29,20 +29,6 @@ def train(model, x_train, y_train, x_val, y_val):
     cond_decoder_val = y_val  # Puedes cambiar por otra condición si quieres experimentar
     estimated_output_val = x_val
 
-    # Concatenate input and condition for both training and validation data
-    #original_inputs = np.concatenate([x_train, y_train], axis=1)
-    #original_inputs_val = np.concatenate([x_val, y_val], axis=1)
-
-    #original_inputs = Concatenate()([input_encoder, cond_encoder])
-    #original_inputs_val = Concatenate()([input_encoder_val, cond_encoder_val])
-
-    #print("Shapes of training inputs:")
-    #print(f"original_inputs: {original_inputs.shape}")
-    #print(f"y_train: {y_train.shape}")
-    #print("Shapes of validation inputs:")
-    #print(f"original_inputs_val: {original_inputs_val.shape}")
-    #print(f"y_val: {y_val.shape}")
-
     # Fit the model with early stopping and checkpoint callbacks
         # Training
     model.fit(
