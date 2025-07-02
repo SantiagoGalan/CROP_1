@@ -25,6 +25,7 @@ def build_vae(encoder, decoder, img_shape=(28, 28, 1), cond_dim=10, beta=1.0):
         kl = -0.5 * tf.reduce_sum(
             1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var), axis=1
         )
+        
         kl = tf.reduce_mean(kl)
         tf.keras.backend.add_loss(beta * kl)
         return z_mean  # devuelve algo arbitrario
