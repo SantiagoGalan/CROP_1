@@ -17,8 +17,6 @@ def data_acquisition(data="MNIST",MIX="AVERAGE"):
         print("y_train.shape:           ", y_train.shape)
         print("x_test(10k).shape:       ", x_test.shape)
 
-
-
     # Normaliza las imágenes a valores entre 0 y 1
     x_train = x_train.astype('float32') / 255
     x_test = x_test.astype('float32') / 255

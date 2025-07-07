@@ -1,74 +1,120 @@
+
+## Setup -----------------------------------------------------------------------
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import tensorflow as tf
+
+from tensorflow import keras
+from tensorflow.python.ops.math_ops import Pow
+from tensorflow.keras.layers import BatchNormalization, Dropout
+
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.layers import Lambda, Input, Dense, Concatenate
+from keras.models import Model                                                  # Ok: se usa 230201
+from keras.datasets import mnist
+#from keras.losses import mse, binary_crossentropy
+
+from tensorflow.keras.losses import MeanSquaredError, BinaryCrossentropy
+mse = MeanSquaredError()
+binary_crossentropy = BinaryCrossentropy()
+
+from keras.utils import plot_model
+from keras import backend as K
+from keras import optimizers
+from keras import layers
+
 import numpy as np
-from tensorflow.keras.datasets import mnist, fashion_mnist
-from tensorflow.keras.utils import to_categorical
+import matplotlib as mplt
+import matplotlib.pyplot as plt
+import argparse
+import os
+import pickle
 
-def load_datasets():
-    (x1_train, y1_train), (x1_test, y1_test) = mnist.load_data()
-    (x2_train, y2_train), (x2_test, y2_test) = fashion_mnist.load_data()
-    return x1_train, y1_train, x2_train, y2_train, x1_test, y1_test, x2_test, y2_test
+def get_data(MIX="AVERAGE"):
+        
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+    print("x_train(60k).shape:      ", x_train.shape)
 
-def preprocess(x, y, num_classes=10, flatten=False):
-    x_proc = x.astype('float32') / 255.0
-    if not flatten:
-        x_proc = np.expand_dims(x_proc, axis=-1)
-    else:
-        x_proc = x_proc.reshape((x.shape[0], -1))
-    y_proc = to_categorical(y, num_classes)
-    return x_proc, y_proc
+    # Normalization
+    image_size = x_train.shape[1]                                                   # 28
+    x_train = x_train.astype('float32') / 255                                       # [0, 1] imagnes re-escalada
+    x_test = x_test.astype('float32') / 255                                         # [0, 1]
 
-def split_train_val(x, y, val_split=0.0, shuffle=True):
-    N = x.shape[0]
-    idx = np.arange(N)
-    if shuffle:
-        np.random.shuffle(idx)
-    split_at = int(N * (1 - val_split))
-    train_idx, val_idx = idx[:split_at], idx[split_at:]
-    return x[train_idx], y[train_idx], x[val_idx], y[val_idx]
+    # Original individual images for Convolutional NN (28x28)
+#    original_dim_C = image_size                                                     # 28
+#    x_train_C = np.expand_dims(x_train, -1)
+#    x_test_C = np.expand_dims(x_test, -1)
+    # Split training data into training and validation sets
+#    x_train_C, x_val_C = x_train_C[:55000], x_train_C[55000:]#
+#    print("x_train_C.shape:    ", x_train_C.shape)
+#    print("x_val_C.shape:    ", x_val_C.shape)
+#    print("x_test_C.shape:     ", x_test_C.shape)
 
-def mix_images(x1, x2, mode='average'):
-    if mode == 'average':
-        return (x1 + x2) / 2.0
-    elif mode == 'max':
-        return np.maximum(x1, x2)
-    else:
-        raise ValueError(f"Modo de mezcla desconocido: {mode}")
+    # Flatten the individual images for Dense NN (784)
+    original_dim = image_size * image_size                                          # 784 cantidad de pixeles de la imagen
+    x_train = np.reshape(x_train, [-1, original_dim])                               # imagenes en 1D
+    x_test = np.reshape(x_test, [-1, original_dim])
 
-def get_data(val_split=0.0, mix_mode='average', num_classes=10, seed=None, flatten=False):
-    if seed is not None:
-        np.random.seed(seed)
+    y_train = tf.keras.utils.to_categorical(y_train)                                # one-hot
+    y_test = tf.keras.utils.to_categorical(y_test)                                  #
+    y_test_orig = y_test
 
-    # Carga cruda
-    x1_train, y1_train, x2_train, y2_train, x1_test, y1_test, x2_test, y2_test = load_datasets()
+    # Split training data into training and validation sets
+    x_train, x_val = x_train[:55000], x_train[55000:]
+    y_train, y_val = y_train[:55000], y_train[55000:]
 
-    # Preprocesamiento
-    x1_train, y1_train = preprocess(x1_train, y1_train, num_classes, flatten)
-    x2_train, y2_train = preprocess(x2_train, y2_train, num_classes, flatten)
-    x1_test, y1_test   = preprocess(x1_test, y1_test, num_classes, flatten)
-    x2_test, y2_test   = preprocess(x2_test, y2_test, num_classes, flatten)
+    print("x_train.shape:      ", x_train.shape)
+    print("x_val.shape:      ", x_val.shape)
+    print("x_test.shape:      ", x_test.shape)
 
-    # Split train/val (sin shuffle para coincidencia determinista)
-    x1_train, y1_train, x1_val, y1_val = split_train_val(x1_train, y1_train, val_split, shuffle=False)
-    x2_train, y2_train, x2_val, y2_val = split_train_val(x2_train, y2_train, val_split, shuffle=False)
+    # Ver para condicionar Convolutional  ******************************************
 
-    # Mezcla reproducible
-    perm_train = np.random.permutation(x1_train.shape[0])
-    perm_test  = np.random.permutation(x1_test.shape[0])
+    # Para condicionar Dense (no se usa?)
+    Xampliado = Concatenate()([x_train,y_train])
+    print("Xampliado.shape:    ", Xampliado.shape)
 
-    x1_train_1 = x1_train[perm_train]
-    x2_train_1 = x2_train[perm_train]
-    x1_test_1  = x1_test[perm_test]
-    x2_test_1  = x2_test[perm_test]
 
-    x_train_mix = mix_images(x1_train, x2_train_1, mode=mix_mode)
-    x_test_mix  = mix_images(x1_test,  x2_test_1,  mode=mix_mode)
+    ## Superimposed digits - MAX
+    np.random.seed(3333)                                    #3333 Cambio el seed de 2022 (2024) para ver variabilidad   # de VAE 5 para fijar las pruebas y poder comparar
+    permrows = np.random.permutation(x_train.shape[0])
+    #x_train_C_1 = x_train_C[permrows,:]                                               # alternative set for Convolutional
+    x_train_1 = x_train[permrows,:]                                               # alternative set for Dense
+    y_train_1 = y_train[permrows,:]
+    permrows = np.random.permutation(x_test.shape[0])
+    #x_test_C_1 = x_test_C[permrows,:]                                               # alternative set for Convolutional
+    x_test_1 = x_test[permrows,:]                                               # alternative set for Dense
+    y_test_1 = y_test[permrows,:]
 
-    return {
-        'x1_train': x1_train, 'y1_train': y1_train,
-        'x2_train': x2_train, 'y2_train': y2_train,
-        'x1_val':   x1_val,   'y1_val':   y1_val,
-        'x2_val':   x2_val,   'y2_val':   y2_val,
-        'x1_test':  x1_test,  'y1_test':  y1_test,
-        'x2_test':  x2_test,  'y2_test':  y2_test,
-        'x_train_mix': x_train_mix,
-        'x_test_mix':  x_test_mix
-    }
+    if MIX == "MAX":
+        maximum_image = np.maximum(x_train,x_train_1)
+        x_train_mix = maximum_image                                                    # Habilta para MAX - Inabilita para AVERAGE
+        print("x_train_1.shape:   ", x_train_1.shape)
+        print("y_train_1.shape:     ", y_train_1.shape)
+        print("x_train_mix.shape: ", x_train_mix.shape)
+        maximum_image = np.maximum(x_test,x_test_1)
+        x_test_mix = maximum_image                                                    # Habilta para MAX - Inabilita para AVERAGE
+        print("x_test_1.shape:   ", x_test_1.shape)
+        print("y_test_1.shape:     ", y_test_1.shape)
+        print("x_test_mix.shape: ", x_test_mix.shape)
+
+    ## Superimposed digits - AVERAGE
+
+    if MIX == "AVERAGE":
+        average_image = (x_train.astype(np.float32) + x_train_1.astype(np.float32)) / 2
+        average_image = average_image.astype(np.uint8)  # Convert the pixel values back to uint8
+        x_train_mix = average_image                                                      # Inhabilta para MAX - Habilita para AVERAGE
+        print("x_train_1.shape:   ", x_train_1.shape)
+        print("y_train_1.shape:     ", y_train_1.shape)
+        print("x_train_mix.shape: ", x_train_mix.shape)
+        average_image = (x_test.astype(np.float32) + x_test_1.astype(np.float32)) / 2
+        average_image = average_image.astype(np.uint8)  # Convert the pixel values back to uint8
+        x_test_mix = average_image                                                      # Inhabilta para MAX - Habilita para AVERAGE
+        print("x_test_1.shape:   ", x_test_1.shape)
+        print("y_test_1.shape:     ", y_test_1.shape)
+        print("x_test_mix.shape: ", x_test_mix.shape)
+
+    #x_train: Imagenes escaladas 1D.
+    #y_train: Vector one-hot encoded.
+    return x_train, y_train, x_test,y_test,original_dim

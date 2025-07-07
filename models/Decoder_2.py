@@ -29,6 +29,7 @@ def build_decoder(
     # Concatenar latente con condición
     x = layers.Concatenate(name="concat_z_cond")([z_input, cond_input])
     x = layers.Dense(intermediate_dim, activation="relu", name="decoder_dense")(x)
+    decoder_outputs = layers.Dense(784, activation="sigmoid")(x) # img*img
 
     # Salida a vector plano de imagen
     flat_units = img_shape[0] * img_shape[1] * img_shape[2]
@@ -39,7 +40,7 @@ def build_decoder(
 
     decoder = Model(
         inputs=[z_input, cond_input],
-        outputs=x,
+        outputs=decoder_outputs,
         name="decoder"
     )
 
