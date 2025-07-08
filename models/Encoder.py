@@ -16,5 +16,5 @@ def build_enconder(img_dim=(28,28),condition_dim=(10,),intermediate_dim=128,late
     z_mean = Dense(latent_dim, name="z_mean")(x)
     z_log_var = Dense(latent_dim, name="z_log_var")(x)
     z = Sampling()((z_mean, z_log_var))
-    encoder = Model(inputs=[img_input, cond_encoder], outputs=[z, z_mean, z_log_var], name="encoder")
+    encoder = Model(inputs=[img_input, cond_encoder], outputs=[z_mean, z_log_var, z], name="encoder")
     return encoder
