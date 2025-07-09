@@ -79,14 +79,14 @@ def get_mnist_data(show_data=False, MIX="NONE"):
 
     ## Superimposed digits - MAX
     np.random.seed(3333)                                    #3333 Cambio el seed de 2022 (2024) para ver variabilidad   # de VAE 5 para fijar las pruebas y poder comparar
-    #permrows = np.random.permutation(x_train.shape[0])
+    permrows = np.random.permutation(x_train.shape[0])
     #x_train_C_1 = x_train_C[permrows,:]                                               # alternative set for Convolutional
-    #x_train_1 = x_train[permrows,:]                                               # alternative set for Dense
-    #y_train_1 = y_train[permrows,:]
+    x_train_1 = x_train[permrows,:]                                               # alternative set for Dense
+    y_train_1 = y_train[permrows,:]
     #permrows = np.random.permutation(x_test.shape[0])
     #x_test_C_1 = x_test_C[permrows,:]                                               # alternative set for Convolutional
     #x_test_1 = x_test[permrows,:]                                               # alternative set for Dense
     #y_test_1 = y_test[permrows,:]
 
 
-    return x_train,x_test, x_val, y_train, y_test, y_val
+    return x_train,x_test, x_val, y_train, y_test, y_val,x_train_1,y_train_1
