@@ -71,18 +71,10 @@ def outcomes(x_decoded_1, x_decoded_2, x_mix_filtrado_1, x_mix_filtrado_2, x_mix
   
   print("################################################################################################")
   
-  #x_best_predicted_1 = ( x * select_1) + (x_1 * select_1_1)
+  x_best_predicted_1 = ( x * select_1) + (x_1 * select_1_1)
+ 
   
-  print(f"forma de x y de x_1 antes de aplanar: x: {x.shape} x_1: {x_1.shape}")
-  
-  x_flat = tf.reshape(x,(x.shape[0],x.shape[1]*x.shape[2]))
-  
-  x_1_flat = tf.reshape(x_1,(x_1.shape[0],x_1.shape[1]*x_1.shape[2]))
-  
-  print(f"forma de x y de x_1 despues de aplanar: x_flat:  {x_flat.shape} y x_1_flat:  {x_1_flat.shape}")
-  
-  
-  x_best_predicted_1 = ( x_flat * select_1) + (x_1_flat * select_1_1)
+  #x_best_predicted_1 = ( x_flat * select_1) + (x_1_flat * select_1_1)
   
   
 
@@ -98,7 +90,7 @@ def outcomes(x_decoded_1, x_decoded_2, x_mix_filtrado_1, x_mix_filtrado_2, x_mix
   select_1           = tf.expand_dims(select_1, 1)
   select_1_1         = tf.expand_dims(select_1_1, 1)
 
-  x_best_predicted_2 = (x_flat * select_1) + (x_1_flat * select_1_1)
+  x_best_predicted_2 = (x * select_1) + (x_1 * select_1_1)
 
   print("y_reduced:   ", y_reduced)
   print("y_1_reduced: ", y_1_reduced)
@@ -143,11 +135,7 @@ def outcomes(x_decoded_1, x_decoded_2, x_mix_filtrado_1, x_mix_filtrado_2, x_mix
   print("MSE_mix_orig: ", MSE_mix_orig.numpy())
   MSE_mix_best_MSE = tf.math.reduce_mean(tf.keras.metrics.MSE(x_best_MSE, x_decoded_1))
   print("MSE_mix_best_MSE: ", MSE_mix_best_MSE.numpy())
-  
-  print("="*60)
-  print(f"formas {x_best_predicted_1.shape}   y    {x_decoded_1.shape}")
-  print("="*60)
-  MSE_mix_best_predicted = tf.math.reduce_mean(tf.keras.metrics.MSE(x_best_predicted_1, tf.reshape(x_decoded_1,(x_decoded_1.shape[0],x_decoded_1.shape[1] * x_decoded_1.shape[2] ) )))
+  MSE_mix_best_predicted = tf.math.reduce_mean(tf.keras.metrics.MSE(x_best_predicted_1, x_decoded_1))
   print("MSE_mix_best_predicted: ", MSE_mix_best_predicted.numpy())
   MSE_mix_orig_mix = tf.math.reduce_mean(tf.keras.metrics.MSE(x_mix_orig, x_mix_filtrado_1))            # added
   print("MSE_mix_orig_mix: ", MSE_mix_orig_mix.numpy())

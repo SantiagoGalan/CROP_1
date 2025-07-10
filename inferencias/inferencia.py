@@ -39,7 +39,7 @@ def separar_digitos(x_train,x_train_1,y_train,y_train_1,encoder,decoder,predicto
     condition_encoder = tf.zeros_like(y_train)
 
 
-    Iterations = 2
+    Iterations = 5
 
     bias = 0.22
     slope = 22.
@@ -88,19 +88,20 @@ def separar_digitos(x_train,x_train_1,y_train,y_train_1,encoder,decoder,predicto
         
         
         
-   
+        img_group = tf.stack([x_train_mix_orig,x_train,x_train_1,x_train_mix_filtrado_1,x_train_mix_filtrado_2,
+                              x_train_decoded_1,x_train_decoded_2,x__x,x_train_best_predicted_1])
         
         
-        img_group = tf.stack([tf.reshape(x_train_mix_orig,(x_train_mix_orig.shape[0],x_train_mix_orig.shape[1]*x_train_mix_orig.shape[2])), 
-                              tf.reshape(x_train,(x_train.shape[0],x_train.shape[1]*x_train.shape[2])), 
-                              tf.reshape(x_train_1,(x_train_1.shape[0],x_train_1.shape[1]*x_train_1.shape[2])), 
-                              tf.reshape(x_train_mix_filtrado_1,(x_train_mix_filtrado_1.shape[0],x_train_mix_filtrado_1.shape[1]*x_train_mix_filtrado_1.shape[2])), 
-                              tf.reshape(x_train_mix_filtrado_2,(x_train_mix_filtrado_2.shape[0],x_train_mix_filtrado_2.shape[1]*x_train_mix_filtrado_2.shape[2])), 
-                              tf.reshape(x_train_decoded_1,(x_train_decoded_1.shape[0],x_train_decoded_1.shape[1]*x_train_decoded_1.shape[2])), 
-                              tf.reshape(x_train_decoded_2,(x_train_mix_orig.shape[0],x_train_mix_orig.shape[1]*x_train_mix_orig.shape[2])), 
-                              tf.reshape(x__x,(x__x.shape[0],x__x.shape[1]*x__x.shape[2])), 
-                              x_train_best_predicted_1
-        ])
+        #img_group = tf.stack([tf.reshape(x_train_mix_orig,(x_train_mix_orig.shape[0],x_train_mix_orig.shape[1]*x_train_mix_orig.shape[2])), 
+        #                      tf.reshape(x_train,(x_train.shape[0],x_train.shape[1]*x_train.shape[2])), 
+        #                      tf.reshape(x_train_1,(x_train_1.shape[0],x_train_1.shape[1]*x_train_1.shape[2])), 
+        #                      tf.reshape(x_train_mix_filtrado_1,(x_train_mix_filtrado_1.shape[0],x_train_mix_filtrado_1.shape[1]*x_train_mix_filtrado_1.shape[2])), 
+        #                      tf.reshape(x_train_mix_filtrado_2,(x_train_mix_filtrado_2.shape[0],x_train_mix_filtrado_2.shape[1]*x_train_mix_filtrado_2.shape[2])), 
+        #                      tf.reshape(x_train_decoded_1,(x_train_decoded_1.shape[0],x_train_decoded_1.shape[1]*x_train_decoded_1.shape[2])), 
+        #                      tf.reshape(x_train_decoded_2,(x_train_mix_orig.shape[0],x_train_mix_orig.shape[1]*x_train_mix_orig.shape[2])), 
+        #                      tf.reshape(x__x,(x__x.shape[0],x__x.shape[1]*x__x.shape[2])), 
+        #                      x_train_best_predicted_1
+        #])
             # Tags -----------------------------------------------------------------------
         e_img = tf.stack(["x_mix_orig", "x_train", "x_train_1", "x_filt_1", "x_filt_2", "x_deco_1", "x_deco_2", "x__x", "x_best_pred"])
             # Labels ---------------------------------------------------------------------

@@ -43,10 +43,12 @@ def get_mnist_data(show_data=False, MIX="NONE"):
     # Normalization
     #image_size = x_train.shape[1]                                                   # 28
     x_train = x_train.astype('float32') / 255                                       # [0, 1] imagnes re-escalada
-    x_test = x_test.astype('float32') / 255                                         # [0, 1]
-    
-    #x_train = np.reshape(x_train, [-1, original_dim])                               # imagenes en 1D
-    #x_test = np.reshape(x_test, [-1, original_dim])
+    x_test = x_test.astype('float32') / 255  
+    # [0, 1]
+    image_size = x_train.shape[1]  
+    original_dim = image_size * image_size   
+    x_train = np.reshape(x_train, [-1, original_dim])                               # imagenes en 1D
+    x_test = np.reshape(x_test, [-1, original_dim])
 
     y_train = tf.keras.utils.to_categorical(y_train)                                # one-hot
     y_test = tf.keras.utils.to_categorical(y_test)                                  #

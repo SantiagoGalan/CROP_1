@@ -11,7 +11,7 @@ def build_predictor():
 
     # Define the input layer
     # Define predictor model ---------------------------------------------------------
-    input_predictor = Input(shape=(original_dim_C), name="original_input")
+    input_predictor = Input(shape=(original_dim,), name="original_input")
 
     # Use the custom reshape layer
     input_predictor_C = ReshapeLayer(original_dim_C)(input_predictor)

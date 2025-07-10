@@ -10,10 +10,10 @@ def build_decoder(latent_dim=2, cond_dim=(10,), intermediate_dim=128, original_s
     latent_inputs = Concatenate()([z_inputs, cond_decoder])
 
     x = Dense(intermediate_dim, activation="relu")(latent_inputs)
-    x = Dense(original_dim, activation="sigmoid")(x)
+    decoder_outputs = Dense(original_dim, activation="sigmoid")(x)
 
     # Reshape a imagen 2D
-    decoder_outputs = Reshape(original_shape)(x)
+    #decoder_outputs = Reshape(original_shape)(x)
 
     decoder = Model(inputs=[z_inputs, cond_decoder], outputs=decoder_outputs, name="decoder")
     return decoder
