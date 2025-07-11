@@ -41,7 +41,7 @@ def separar_digitos(x_train,x_train_1,y_train,y_train_1,encoder,decoder,predicto
 
     Iterations = 5
 
-    bias = 0.22
+    bias = 0.22#TODO revisar si para fmnist funciona o si hay que entrenar los parametros
     slope = 22.
 
     beta = 1.
