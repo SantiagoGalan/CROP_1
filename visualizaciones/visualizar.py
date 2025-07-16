@@ -65,3 +65,95 @@ def variantes(cvae, condicion_id, num_variantes=10):
         plt.axis("off")
     plt.suptitle(f"Variantes generadas para la clase {condicion_id}")
     plt.show()
+
+def lattent_space(cvae, dataset):
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    z_all = []
+    y_all = []
+
+    for (batch, labels), _ in dataset:
+        # Obtené z y labels
+        z_mean, _, z = cvae.encoder.predict([batch, labels])
+        # Concatená z y labels (eje 1)
+        z_input = np.concatenate([z, labels], axis=1)
+        z_all.append(z_input)
+        y_all.append(labels)
+
+    z_all = np.concatenate(z_all, axis=0)
+    y_all = np.argmax(np.concatenate(y_all, axis=0), axis=1)
+
+    # Visualizá solo las dos primeras dimensiones de la entrada al decoder
+    plt.figure(figsize=(8, 6))
+    plt.scatter(z_all[:, 0], z_all[:, 1], c=y_all, cmap='tab10', alpha=0.5, s=5)
+    plt.colorbar(label='Etiqueta')
+    plt.xlabel('z+label [0]')
+    plt.ylabel('z+label [1]')
+    plt.title('Espacio latente (entrada real al decoder)')
+    plt.show()
+    
+def lattent_space_tsne(cvae, dataset,max_samples=10000):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from sklearn.manifold import TSNE
+
+    z_all = []
+    y_all = []
+    count = 0
+    for (batch, labels), _ in dataset:
+        z_mean, _, z = cvae.encoder.predict([batch, labels])
+        z_input = np.concatenate([z, labels], axis=1)
+        z_all.append(z_input)
+        y_all.append(labels)
+        count += len(batch)
+        print(count)
+        if count >= max_samples:
+            break
+
+    z_all = np.concatenate(z_all, axis=0)
+    y_all = np.argmax(np.concatenate(y_all, axis=0), axis=1)
+
+    # t-SNE para reducir a 2D
+    tsne = TSNE(n_components=2, random_state=42, perplexity=30)
+    z_tsne = tsne.fit_transform(z_all)
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(z_tsne[:, 0], z_tsne[:, 1], c=y_all, cmap='tab10', alpha=0.5, s=5)
+    plt.colorbar(label='Etiqueta')
+    plt.xlabel('t-SNE [0]')
+    plt.ylabel('t-SNE [1]')
+    plt.title('Espacio latente con t-SNE')
+    plt.show()
+    
+def lattent_space_umap(cvae, dataset, max_samples=2000):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import umap
+
+    z_all = []
+    y_all = []
+    count = 0
+
+    for (batch, labels), _ in dataset:
+        z_mean, _, z = cvae.encoder.predict([batch, labels])
+        z_input = np.concatenate([z, labels], axis=1)
+        z_all.append(z_input)
+        y_all.append(labels)
+        count += len(batch)
+        if count >= max_samples:
+            break
+
+    z_all = np.concatenate(z_all, axis=0)[:max_samples]
+    y_all = np.argmax(np.concatenate(y_all, axis=0)[:max_samples], axis=1)
+
+    reducer = umap.UMAP(n_components=2, random_state=42)
+    z_umap = reducer.fit_transform(z_all)
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(z_umap[:, 0], z_umap[:, 1], c=y_all, cmap='tab10', alpha=0.5, s=5)
+    plt.colorbar(label='Etiqueta')
+    plt.xlabel('UMAP [0]')
+    plt.ylabel('UMAP [1]')
+    plt.title('Espacio latente con UMAP')
+    plt.show()

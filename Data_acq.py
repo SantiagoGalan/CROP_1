@@ -1,8 +1,8 @@
 import numpy as np
 import tensorflow as tf
-from keras.datasets import mnist
+from keras.datasets import mnist, fashion_mnist
 
-def get_mnist_data(show_data=False, MIX="NONE"):
+def get_mnist_data(show_data=False, MIX="NONE",dataset="mnist"):
 
     '''
     if MIX == "MAX":
@@ -36,10 +36,18 @@ def get_mnist_data(show_data=False, MIX="NONE"):
     #x_train: Imagenes escaladas 1D.
     #y_train: Vector one-hot encoded.
     '''
-    # MNIST dataset
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
-    #print("x_train(60k).shape:      ", x_train.shape)
 
+        #print("x_train(60k).shape:      ", x_train.shape)
+
+    if dataset == "fashion":
+        # MNIST dataset
+        (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+        print(f"Usando {dataset} como dataset")
+        #print("x_train(60k).shape:      ", x_train.shape)
+    else: 
+        # MNIST dataset
+        (x_train, y_train), (x_test, y_test) = mnist.load_data()
+        print(f"Usando {dataset} como dataset")
     # Normalization
     #image_size = x_train.shape[1]                                                   # 28
     x_train = x_train.astype('float32') / 255                                       # [0, 1] imagnes re-escalada
