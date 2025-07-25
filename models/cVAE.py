@@ -17,7 +17,6 @@ class CVAE(tf.keras.Model):
         _, _, z = self.encoder([x, cond])
         return self.decoder([z, cond])
 
-
     def train_step(self, data):
         (inputs, targets) = data
         x, cond = inputs
@@ -25,22 +24,12 @@ class CVAE(tf.keras.Model):
         with tf.GradientTape() as tape:
             z_mean, z_log_var, z = self.encoder([x, cond], training=True)
             reconstruction = self.decoder([z, cond], training=True)
-
-           # reconstruction_loss = tf.reduce_mean(
-           #     tf.keras.losses.mse(tf.reshape(x, [-1, self.original_dim]),
-           #                         tf.reshape(reconstruction, [-1, self.original_dim]))
-           #) * self.original_dim
             
             reconstruction_loss = tf.keras.losses.mse(tf.reshape(x, [-1, self.original_dim]),
                                     tf.reshape(reconstruction, [-1, self.original_dim]))* self.original_dim
 
-            
             kl_loss = -0.5 * (1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
             kl_loss = tf.reduce_sum(kl_loss,-1)
-
-            #kl_loss = -0.5 * tf.reduce_mean(
-            #    tf.reduce_sum(1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var), axis=1)
-            #)
 
             total_loss = reconstruction_loss + self.beta * kl_loss
             total_loss = tf.reduce_mean(total_loss)

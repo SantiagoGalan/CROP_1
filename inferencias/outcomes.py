@@ -218,8 +218,8 @@ def outcomes(x_decoded_1, x_decoded_2, x_mix_filtrado_1, x_mix_filtrado_2, x_mix
   gen1_d = x_decoded_1
   gen2_d = x_decoded_2
 
-  bpsnr_mean   = met.batched_psnr(gt1, gt2, gen1, gen2)
-  bpsnr_mean_d =  met.batched_psnr(gt1, gt2, gen1_d, gen2_d)
+  bpsnr_mean   = met.batched_psnr(gt1, gt2, gen1, gen2) #contra el digito filtrado
+  bpsnr_mean_d =  met.batched_psnr(gt1, gt2, gen1_d, gen2_d) # contra las mascaras
 #  bpsnr_mean_mix = psnr_grayscale(gt_mix, preds)
 
   print("bpsnr_mean = ", bpsnr_mean)

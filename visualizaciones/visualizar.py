@@ -33,7 +33,7 @@ def condiciones(cvae, x_input):
     plt.show()
 
 
-def variantes(cvae, condicion_id, num_variantes=10):
+def variantes(cvae, condicion_id, num_variantes=10,custom_condition=None):
     """
     Muestra múltiples imágenes generadas para una misma condición.
     
@@ -43,14 +43,17 @@ def variantes(cvae, condicion_id, num_variantes=10):
         num_variantes: número de muestras a generar.
     """
     # Comprobar que el ID sea válido
-    assert 0 <= condicion_id <= 9, "La condición debe estar entre 0 y 9."
-
+    #assert 0 <= condicion_id <= 9, "La condición debe estar entre 0 y 9."
     # Crear condición one-hot repetida
     condicion = np.eye(10)[condicion_id]
     condiciones = np.repeat([condicion], num_variantes, axis=0)  # (num_variantes, 10)
+    
+    if custom_condition is not None:
+        condiciones = custom_condition
 
     # Generar z aleatorios ~ N(0,1)
     latent_dim = cvae.decoder.input_shape[0][1]  # obtiene la dimensión latente del input
+    print(f"latent_dim:  {latent_dim} ")
     z = np.random.normal(size=(num_variantes, latent_dim))  # (num_variantes, latent_dim)
 
     # Generar imágenes con el decoder
@@ -136,6 +139,12 @@ def lattent_space_umap(cvae, dataset, max_samples=2000):
     count = 0
 
     for (batch, labels), _ in dataset:
+        batch = np.array(batch)
+        labels = np.array(labels)
+        if batch.ndim == 1:
+            batch = np.expand_dims(batch, axis=0)
+        if labels.ndim == 1:
+            labels = np.expand_dims(labels, axis=0)
         z_mean, _, z = cvae.encoder.predict([batch, labels])
         z_input = np.concatenate([z, labels], axis=1)
         z_all.append(z_input)

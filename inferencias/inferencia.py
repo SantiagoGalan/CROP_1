@@ -13,8 +13,10 @@ import importlib
 importlib.reload(out)
 
 
-def separar_digitos(x_train,x_train_1,y_train,y_train_1,encoder,decoder,predictor,bias=0.22, slope=22,beta=1,alpha_1=-2,alpha_2=-22,Iterations = 3):
-        
+def separar_digitos(x_train,x_train_1,y_train,y_train_1,cvae,predictor,bias=0.22,
+                    slope=22,beta=1,alpha_1=-2,alpha_2=-22,Iterations = 3, num_col = 10,
+                    show_graph=False,show_laten=False):
+
         
     #-------------------------------versión 3 (TRAIN a simplificar CORTO PARA PRUEBAS CON VARIANZA)-----------------------------------------
     #                     REVISAR este help
@@ -55,13 +57,13 @@ def separar_digitos(x_train,x_train_1,y_train,y_train_1,encoder,decoder,predicto
 
         # best_digit_var_sigmoid(x_mix_filtrado_2, x_mix_orig, alpha, bias, slope)
 
-        x_train_mix_filtrado_1, x_train_decoded_1 = bd.best_digit_var_sigmoid(x_train_mix_filtrado_2, x_train_mix_orig, alpha_2, bias, slope,encoder,decoder,predictor)
+        x_train_mix_filtrado_1, x_train_decoded_1 = bd.best_digit_var_sigmoid(x_train_mix_filtrado_2, x_train_mix_orig, alpha_2, bias, slope,cvae,predictor,show_laten=show_laten)
         alpha_2 = alpha_2 * beta
 
-        x_train_mix_filtrado_2, x_train_decoded_2 = bd.best_digit_var_sigmoid(x_train_mix_filtrado_1, x_train_mix_orig, alpha_1, bias, slope,encoder,decoder,predictor)
+        x_train_mix_filtrado_2, x_train_decoded_2 = bd.best_digit_var_sigmoid(x_train_mix_filtrado_1, x_train_mix_orig, alpha_1, bias, slope,cvae,predictor,show_laten=show_laten)
         alpha_1 = alpha_1 * beta
 
-        
+
 
         print("ITERACIÓN A: ", j)
 
@@ -69,41 +71,41 @@ def separar_digitos(x_train,x_train_1,y_train,y_train_1,encoder,decoder,predicto
                                                                                         x_train_mix_filtrado_2,x_train_mix_orig, x_train, x_train_1,
                                                                                         y_train, y_train_1,predictor)
 
-    # Begin PRINT ==================================================================
-        # Parameters -----------------------------------------------------------------
-    num_row = 1 #2                                                                  # Number of rows per group
-    num_col = 10 #8 #10                                                                 # Number of columns per group
-    num_pixels = 28
-    num_functions = 9                                                               # Number of functions to be displayed (=num_row_group*num_col_group)
-    num_row_group = 9                                                               # Number of group rows
-    num_col_group = 1                                                               # Number of group columns
-    scale_factor = 1.0                                                              # Image scale factor
-    figsize_x = num_col * num_col_group * scale_factor                              # Total width of a row
-    figsize_y = num_row * num_row_group * scale_factor                              # Total height of a column
-        # Images ---------------------------------------------------------------------
-    
-    print(x_train_mix_orig.shape)
-    
-    
-    
-    img_group = tf.stack([x_train_mix_orig,x_train,x_train_1,x_train_mix_filtrado_1,x_train_mix_filtrado_2,
-                            x_train_decoded_1,x_train_decoded_2,x__x,x_train_best_predicted_1])
-    
-        # Tags -----------------------------------------------------------------------
-    e_img = tf.stack(["x_mix_orig", "x_train", "x_train_1", "x_filt_1", "x_filt_2", "x_deco_1", "x_deco_2", "x__x", "x_best_pred"])
-        # Labels ---------------------------------------------------------------------
-    labels_group = tf.stack([[y_train, y_train_1]])
-    labels_index = [0]                                                              # rows with labels
-        # Plot images ----------------------------------------------------------------
+    if (show_graph==True):
 
-    photo_group(num_row, num_col, figsize_x, figsize_y, num_pixels,
-                num_functions, num_row_group, num_col_group,
-                img_group, e_img, labels_group, labels_index)
-    plt.title(f"separacion con bias= {bias} y slope=  {slope}")
-    plt.show()
-    print("Fig.: En la primera fila se observan las imágenes de TRAIN superpuestas, las componentes en las dos siguientes,")
-    print("      la reconstrucción final en la cuarta, la mejor imagen original basada en MSE en la quinta y en la última")
-    print("      la mejor imagen según la predicción.")
-    # End PRINT ====================================================================
+        # Begin PRINT ==================================================================
+            # Parameters -----------------------------------------------------------------
+        num_row = 1 #2                                                                  # Number of rows per group
+        num_col = 10 #8 #10                                                                 # Number of columns per group
+        num_pixels = 28
+        num_functions = 9                                                               # Number of functions to be displayed (=num_row_group*num_col_group)
+        num_row_group = 9                                                               # Number of group rows
+        num_col_group = 1                                                               # Number of group columns
+        scale_factor = 1.0                                                              # Image scale factor
+        figsize_x = num_col * num_col_group * scale_factor                              # Total width of a row
+        figsize_y = num_row * num_row_group * scale_factor                              # Total height of a column
+            # Images ---------------------------------------------------------------------
+        
+    
+        
+        img_group = tf.stack([x_train_mix_orig,x_train,x_train_1,x_train_mix_filtrado_1,x_train_mix_filtrado_2,
+                                x_train_decoded_1,x_train_decoded_2,x__x,x_train_best_predicted_1])
+        
+            # Tags -----------------------------------------------------------------------
+        e_img = tf.stack(["x_mix_orig", "x_train", "x_train_1", "x_filt_1", "x_filt_2", "x_deco_1", "x_deco_2", "x__x", "x_best_pred"])
+            # Labels ---------------------------------------------------------------------
+        labels_group = tf.stack([[y_train, y_train_1]])
+        labels_index = [0]                                                              # rows with labels
+            # Plot images ----------------------------------------------------------------
+
+        photo_group(num_row, num_col, figsize_x, figsize_y, num_pixels,
+                    num_functions, num_row_group, num_col_group,
+                    img_group, e_img, labels_group, labels_index)
+        plt.title(f"separacion con bias= {bias} y slope=  {slope}",loc="center")
+        plt.show()
+        #print("Fig.: En la primera fila se observan las imágenes de TRAIN superpuestas, las componentes en las dos siguientes,")
+        #print("      la reconstrucción final en la cuarta, la mejor imagen original basada en MSE en la quinta y en la última")
+        #print("      la mejor imagen según la predicción.")
+        # End PRINT ====================================================================
 
 
