@@ -1,8 +1,11 @@
 import tensorflow as tf
 
+from keras.saving import register_keras_serializable
+
+@register_keras_serializable()
 class CVAE(tf.keras.Model):
-    def __init__(self, encoder, decoder, original_dim, beta=1.0):
-            super(CVAE, self).__init__()
+    def __init__(self, encoder, decoder, original_dim, beta=1.0,**kwargs):
+            super(CVAE, self).__init__(**kwargs)
             self.encoder = encoder
             self.decoder = decoder
             self.original_dim = original_dim
@@ -73,3 +76,20 @@ class CVAE(tf.keras.Model):
             "reconstruction_loss": self.reconstruction_loss_tracker.result(),
             "kl_loss": self.kl_loss_tracker.result(),
         }
+        
+    #metodos de config para levantar el modelo
+    def get_config(self):
+        config = super(CVAE, self).get_config()
+        config.update({
+            "encoder": tf.keras.saving.serialize_keras_object(self.encoder),
+            "decoder": tf.keras.saving.serialize_keras_object(self.decoder),
+            "original_dim": self.original_dim,
+            "beta": self.beta
+        })
+        return config
+
+    @classmethod
+    def from_config(cls, config):
+        encoder = tf.keras.saving.deserialize_keras_object(config.pop("encoder"))
+        decoder = tf.keras.saving.deserialize_keras_object(config.pop("decoder"))
+        return cls(encoder=encoder, decoder=decoder, **config)

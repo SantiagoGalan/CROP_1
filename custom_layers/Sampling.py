@@ -1,6 +1,8 @@
 import tensorflow as tf
 from keras.layers  import Layer
+from keras.saving import register_keras_serializable
 
+@register_keras_serializable()
 class Sampling(Layer):
   def call(self, inputs):
     z_mean, z_log_var = inputs
