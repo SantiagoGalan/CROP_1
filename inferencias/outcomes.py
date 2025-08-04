@@ -177,17 +177,17 @@ def outcomes(x_decoded_1, x_decoded_2, x_mix_filtrado_1, x_mix_filtrado_2, x_mix
   mask = tf.ones_like(select_1_OR)
   m.reset_state()
   m.update_state(select_1_OR, mask)
-  print("Accuracy(select_1_OR, mask): ", m.result().numpy())
+#  print("Accuracy(select_1_OR, mask): ", m.result().numpy())
 
   mask = tf.ones_like(select_2_OR)
   m.reset_state()
   m.update_state(select_2_OR, mask)
-  print("Accuracy(select_2_OR, mask): ", m.result().numpy())
+#  print("Accuracy(select_2_OR, mask): ", m.result().numpy())
 
   mask = tf.ones_like(s_best_OR)
   m.reset_state()
   m.update_state(s_best_OR, mask)
-  print("Accuracy(s_best_OR, mask): ", m.result().numpy())
+ # print("Accuracy(s_best_OR, mask): ", m.result().numpy())
 
   select_reduced = tf.cast(tf.math.not_equal(y_reduced, y_1_reduced), tf.int64)
   select_12_f = tf.cast(tf.math.equal(y_predicted_1_f, y_predicted_2_f), tf.int64)
@@ -196,13 +196,13 @@ def outcomes(x_decoded_1, x_decoded_2, x_mix_filtrado_1, x_mix_filtrado_2, x_mix
 
   m.reset_state()
   m.update_state(s_best_AND_AND, mask)
-  print("Accuracy(s_best_AND_AND, mask): ", m.result().numpy())
+ # print("Accuracy(s_best_AND_AND, mask): ", m.result().numpy())
 
 
-  print(y_reduced[0:L])
-  print(y_1_reduced[0:L])
-  print(tf.math.argmax(predictor.predict(x_mix_filtrado_1), 1)[0:L])
-  print(tf.math.argmax(predictor.predict(x_mix_filtrado_2), 1)[0:L])
+#  print(y_reduced[0:L])
+#  print(y_1_reduced[0:L])
+#  print(tf.math.argmax(predictor.predict(x_mix_filtrado_1), 1)[0:L])
+#  print(tf.math.argmax(predictor.predict(x_mix_filtrado_2), 1)[0:L])
 
 
   ###### ACÁ VA SSIM ##############################################################
@@ -222,8 +222,8 @@ def outcomes(x_decoded_1, x_decoded_2, x_mix_filtrado_1, x_mix_filtrado_2, x_mix
   bpsnr_mean_d =  met.batched_psnr(gt1, gt2, gen1_d, gen2_d) # contra las mascaras
 #  bpsnr_mean_mix = psnr_grayscale(gt_mix, preds)
 
-  print("bpsnr_mean = ", bpsnr_mean)
-  print("bpsnr_mean_d = ", bpsnr_mean_d)
+#  print("bpsnr_mean = ", bpsnr_mean)
+#  print("bpsnr_mean_d = ", bpsnr_mean_d)
 
 
-  return (x_best_predicted_1, y_predicted_1_f, y_predicted_2_f)
+  return(x_best_predicted_1, y_predicted_1_f, y_predicted_2_f,bpsnr_mean)

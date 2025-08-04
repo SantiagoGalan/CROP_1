@@ -53,7 +53,6 @@ def variantes(cvae, condicion_id, num_variantes=10,custom_condition=None):
 
     # Generar z aleatorios ~ N(0,1)
     latent_dim = cvae.decoder.input_shape[0][1]  # obtiene la dimensión latente del input
-    print(f"latent_dim:  {latent_dim} ")
     z = np.random.normal(size=(num_variantes, latent_dim))  # (num_variantes, latent_dim)
 
     # Generar imágenes con el decoder
@@ -78,7 +77,7 @@ def lattent_space(cvae, dataset):
 
     for (batch, labels), _ in dataset:
         # Obtené z y labels
-        z_mean, _, z = cvae.encoder.predict([batch, labels])
+        z_mean, _, z = cvae.encoder.predict([batch, labels],verbose=0)
         # Concatená z y labels (eje 1)
         z_input = np.concatenate([z, labels], axis=1)
         z_all.append(z_input)
@@ -96,7 +95,7 @@ def lattent_space(cvae, dataset):
     plt.title('Espacio latente (entrada real al decoder)')
     plt.show()
     
-def lattent_space_tsne(cvae, dataset,max_samples=10000):
+def latent_space_tsne(cvae, dataset,max_samples=10000,save_path=None):
     import matplotlib.pyplot as plt
     import numpy as np
     from sklearn.manifold import TSNE
@@ -105,12 +104,18 @@ def lattent_space_tsne(cvae, dataset,max_samples=10000):
     y_all = []
     count = 0
     for (batch, labels), _ in dataset:
-        z_mean, _, z = cvae.encoder.predict([batch, labels])
+        batch = np.array(batch)
+        labels = np.array(labels)
+        if batch.ndim == 1:
+            batch = np.expand_dims(batch, axis=0)
+        if labels.ndim == 1:
+            labels = np.expand_dims(labels, axis=0)
+        z_mean, _, z = cvae.encoder.predict([batch, labels],verbose=0)
         z_input = np.concatenate([z, labels], axis=1)
         z_all.append(z_input)
         y_all.append(labels)
         count += len(batch)
-        print(count)
+        #print(count)
         if count >= max_samples:
             break
 
@@ -127,9 +132,11 @@ def lattent_space_tsne(cvae, dataset,max_samples=10000):
     plt.xlabel('t-SNE [0]')
     plt.ylabel('t-SNE [1]')
     plt.title('Espacio latente con t-SNE')
+    if save_path:
+        plt.savefig(save_path,dpi=300, bbox_inches='tight')
     plt.show()
     
-def lattent_space_umap(cvae, dataset, max_samples=2000):
+def latent_space_umap(cvae, dataset, max_samples=2000,save_path=None):
     import matplotlib.pyplot as plt
     import numpy as np
     import umap
@@ -145,7 +152,7 @@ def lattent_space_umap(cvae, dataset, max_samples=2000):
             batch = np.expand_dims(batch, axis=0)
         if labels.ndim == 1:
             labels = np.expand_dims(labels, axis=0)
-        z_mean, _, z = cvae.encoder.predict([batch, labels])
+        z_mean, _, z = cvae.encoder.predict([batch, labels],verbose=0)
         z_input = np.concatenate([z, labels], axis=1)
         z_all.append(z_input)
         y_all.append(labels)
@@ -165,4 +172,7 @@ def lattent_space_umap(cvae, dataset, max_samples=2000):
     plt.xlabel('UMAP [0]')
     plt.ylabel('UMAP [1]')
     plt.title('Espacio latente con UMAP')
+    if save_path:
+        plt.savefig(save_path,dpi=300, bbox_inches='tight')
     plt.show()
+    plt.close()

@@ -31,19 +31,7 @@ def best_digit_var_sigmoid(x_mix_filtrado_2, x_mix_orig, alpha, bias, slope,cvae
   x_mix_filtrado_1 = (2 * x_mix_orig * x_decoded_1)                                    # Masked (Cochlear)
   x_mix_filtrado_1 = tf.clip_by_value(x_mix_filtrado_1, clip_value_min=0, clip_value_max=1)
   
-  
-  print("condition_decoder_1 shape:", condition_decoder_1.shape)
-  print("x_filtrado_1 shape:", x_mix_filtrado_1.shape)
-  print("z shape:", z.shape)
-
-  
-  if( show_laten==True):
-    vis_dataset = tf.data.Dataset.from_tensor_slices(((z, condition_encoder), z))
-
-    vis.lattent_space_umap(cvae, vis_dataset)
-
-  
-  
+   
   # agregar visualizion del espacio latente-
   
   return (x_mix_filtrado_1, x_decoded_1)
