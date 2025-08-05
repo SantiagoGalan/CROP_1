@@ -31,7 +31,5 @@ def best_digit_var_sigmoid(x_mix_filtrado_2, x_mix_orig, alpha, bias, slope,cvae
   x_mix_filtrado_1 = (2 * x_mix_orig * x_decoded_1)                                    # Masked (Cochlear)
   x_mix_filtrado_1 = tf.clip_by_value(x_mix_filtrado_1, clip_value_min=0, clip_value_max=1)
   
-   
-  # agregar visualizion del espacio latente-
   
-  return (x_mix_filtrado_1, x_decoded_1)
+  return (x_mix_filtrado_1, x_decoded_1,condition_encoder )

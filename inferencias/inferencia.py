@@ -35,10 +35,10 @@ def separar_digitos(x_train,x_train_1,y_train,y_train_1,cvae,predictor,bias=0.22
 
         # best_digit_var_sigmoid(x_mix_filtrado_2, x_mix_orig, alpha, bias, slope)
 
-        x_train_mix_filtrado_1, x_train_decoded_1 = bd.best_digit_var_sigmoid(x_train_mix_filtrado_2, x_train_mix_orig, alpha_2, bias, slope,cvae,predictor,show_laten=show_laten)
+        x_train_mix_filtrado_1, x_train_decoded_1, predicciones_1 = bd.best_digit_var_sigmoid(x_train_mix_filtrado_2, x_train_mix_orig, alpha_2, bias, slope,cvae,predictor,show_laten=show_laten)
         alpha_2 = alpha_2 * beta
 
-        x_train_mix_filtrado_2, x_train_decoded_2 = bd.best_digit_var_sigmoid(x_train_mix_filtrado_1, x_train_mix_orig, alpha_1, bias, slope,cvae,predictor,show_laten=show_laten)
+        x_train_mix_filtrado_2, x_train_decoded_2, predicciones_2 = bd.best_digit_var_sigmoid(x_train_mix_filtrado_1, x_train_mix_orig, alpha_1, bias, slope,cvae,predictor,show_laten=show_laten)
         alpha_1 = alpha_1 * beta       
 
 
@@ -79,4 +79,4 @@ def separar_digitos(x_train,x_train_1,y_train,y_train_1,cvae,predictor,bias=0.22
                     img_group, e_img, labels_group, labels_index)
         plt.show()
     
-    return bpsnr_mean
+    return bpsnr_mean, predicciones_1, predicciones_2

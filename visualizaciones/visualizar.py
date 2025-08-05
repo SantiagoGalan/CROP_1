@@ -45,11 +45,14 @@ def variantes(cvae, condicion_id, num_variantes=10,custom_condition=None):
     # Comprobar que el ID sea válido
     #assert 0 <= condicion_id <= 9, "La condición debe estar entre 0 y 9."
     # Crear condición one-hot repetida
-    condicion = np.eye(10)[condicion_id]
-    condiciones = np.repeat([condicion], num_variantes, axis=0)  # (num_variantes, 10)
+    #condicion = np.eye(10)[condicion_id]
+    #condiciones = np.repeat([condicion], num_variantes, axis=0)  # (num_variantes, 10)
     
     if custom_condition is not None:
         condiciones = custom_condition
+    else:
+        condicion = np.eye(10)[condicion_id]
+        condiciones = np.repeat([condicion], num_variantes, axis=0)
 
     # Generar z aleatorios ~ N(0,1)
     latent_dim = cvae.decoder.input_shape[0][1]  # obtiene la dimensión latente del input
@@ -67,6 +70,7 @@ def variantes(cvae, condicion_id, num_variantes=10,custom_condition=None):
         plt.axis("off")
     plt.suptitle(f"Variantes generadas para la clase {condicion_id}")
     plt.show()
+    return z
 
 def lattent_space(cvae, dataset):
     import matplotlib.pyplot as plt
@@ -165,6 +169,14 @@ def latent_space_umap(cvae, dataset, max_samples=2000,save_path=None):
 
     reducer = umap.UMAP(n_components=2, random_state=42)
     z_umap = reducer.fit_transform(z_all)
+
+    # Guardar los datos para análisis externo
+    np.save("z_all.npy", z_all)
+    np.save("y_all.npy", y_all)
+
+    # (Opcional) también podés guardar el embedding UMAP si querés
+    np.save("z_umap.npy", z_umap)
+
 
     plt.figure(figsize=(8, 6))
     plt.scatter(z_umap[:, 0], z_umap[:, 1], c=y_all, cmap='tab10', alpha=0.5, s=5)
