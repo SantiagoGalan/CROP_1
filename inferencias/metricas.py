@@ -1,9 +1,6 @@
 from custom_layers.ReshapeLayer import ReshapeLayer
 import tensorflow as tf
 
-# SSIM definition
-# ssim2 = tf.image.ssim(im1, im2, max_val=1.0, filter_size=11,
-#                          filter_sigma=1.5, k1=0.01, k2=0.03)
 
 def ssim_grayscale(target, preds):
 
@@ -33,7 +30,7 @@ def ssim_grayscale(target, preds):
     ssim = tf.image.ssim(target_tensor, preds_tensor, max_val=1.0, filter_size=11,
                          filter_sigma=1.5, k1=0.01, k2=0.03)
 
-    print(ssim)
+    #print(ssim)
     return ssim
 
 
@@ -45,7 +42,7 @@ def batched_ssim(gt1, gt2, gen1, gen2):
         0.5 * ssim_grayscale(gt2, gen2)
     )
 
-    print(batched_ssim_12)
+    #print(batched_ssim_12)
 
     # Calculate SSIM for pairs (gt1, gen2) and (gt2, gen1)
     batched_ssim_21 = (
@@ -53,7 +50,7 @@ def batched_ssim(gt1, gt2, gen1, gen2):
         0.5 * ssim_grayscale(gt2, gen1)
     )
 
-    print(batched_ssim_21)
+    #print(batched_ssim_21)
 
     # Compute the maximum PSNR between the two pairs
     bssim_max = tf.math.maximum(batched_ssim_12, batched_ssim_21)
@@ -93,7 +90,7 @@ def psnr_grayscale(target, preds):
 
     # Calculate PSNR
     psnr = tf.image.psnr(target_tensor, preds_tensor, max_val=1.0)
-    print(psnr)
+    #print(psnr)
     return psnr
 
 def batched_psnr(gt1, gt2, gen1, gen2):
@@ -104,7 +101,7 @@ def batched_psnr(gt1, gt2, gen1, gen2):
         0.5 * psnr_grayscale(gt2, gen2)
     )
 
-    print(batched_psnr_12)
+#    print(batched_psnr_12)
 
     # Calculate PSNR for pairs (gt1, gen2) and (gt2, gen1)
     batched_psnr_21 = (
@@ -112,7 +109,7 @@ def batched_psnr(gt1, gt2, gen1, gen2):
         0.5 * psnr_grayscale(gt2, gen1)
     )
 
-    print(batched_psnr_21)
+#    print(batched_psnr_21)
 
     # Compute the maximum PSNR between the two pairs
     bpsnr_max = tf.math.maximum(batched_psnr_12, batched_psnr_21)
