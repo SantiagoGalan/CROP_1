@@ -91,7 +91,7 @@ def separar_digitos(
         )
         alpha_1 = alpha_1 * beta
 
-    x_train_best_predicted_1, _, _, bpsnr_mean = out.outcomes(
+    x_train_best_predicted_1, _, _, bpsnr, bpsnr_d = out.outcomes(
         x_train_decoded_1,
         x_train_decoded_2,
         x_train_mix_filtrado_1,
@@ -170,4 +170,4 @@ def separar_digitos(
         )
         plt.show()
 
-    return bpsnr_mean, predicciones_1, predicciones_2
+    return bpsnr,bpsnr_d, predicciones_1, predicciones_2
