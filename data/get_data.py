@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 from keras.datasets import mnist, fashion_mnist
 
-def get_mnist_data(show_data=False, MIX="NONE",dataset="mnist"):
+def get_mnist_data(dataset="mnist"):
 
     #print("x_train(60k).shape:      ", x_train.shape)
 
@@ -33,18 +33,11 @@ def get_mnist_data(show_data=False, MIX="NONE",dataset="mnist"):
     x_train, x_val = x_train[:55000], x_train[55000:]
     y_train, y_val = y_train[:55000], y_train[55000:]
 
-
-
-    ## Superimposed digits - MAX
     np.random.seed(3333)                                    #3333 Cambio el seed de 2022 (2024) para ver variabilidad   # de VAE 5 para fijar las pruebas y poder comparar
     permrows = np.random.permutation(x_train.shape[0])
-    #x_train_C_1 = x_train_C[permrows,:]                                               # alternative set for Convolutional
     x_train_1 = x_train[permrows,:]                                               # alternative set for Dense
     y_train_1 = y_train[permrows,:]
-    #permrows = np.random.permutation(x_test.shape[0])
-    #x_test_C_1 = x_test_C[permrows,:]                                               # alternative set for Convolutional
-    #x_test_1 = x_test[permrows,:]                                               # alternative set for Dense
-    #y_test_1 = y_test[permrows,:]
 
+    
 
-    return x_train,x_test, x_val, y_train, y_test, y_val,x_train_1,y_train_1
+    return {"x_train": x_train, "x_test": x_test, "x_val": x_val, "y_train": y_train, "y_test": y_test, "y_val": y_val, "x_train_1": x_train_1, "y_train_1": y_train_1}

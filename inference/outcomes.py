@@ -1,5 +1,5 @@
 import tensorflow as tf
-import inferencias.metricas as met
+import inference.metrics as met
 import importlib
 
 importlib.reload(met)
@@ -11,8 +11,8 @@ importlib.reload(met)
 def outcomes(
     x_decoded_1,
     x_decoded_2,
-    x_mix_filtrado_1,
-    x_mix_filtrado_2,
+    x_mix_filter_1,
+    x_mix_filter_2,
     x_mix_orig,
     x,
     x_1,
@@ -24,9 +24,9 @@ def outcomes(
     # Outcomes ---------------------------------------------------------------------
     y_predicted_1 = tf.math.argmax(predictor.predict(x_decoded_1, verbose=0), 1)
     y_predicted_2 = tf.math.argmax(predictor.predict(x_decoded_2, verbose=0), 1)
-    y_predicted_1_f = tf.math.argmax(predictor.predict(x_mix_filtrado_1, verbose=0), 1)
-    y_predicted_2_f = tf.math.argmax(predictor.predict(x_mix_filtrado_2, verbose=0), 1)
-    y_predicted_mix = tf.math.argmax(predictor.predict(x_mix_filtrado_1, verbose=0), 1)
+    y_predicted_1_f = tf.math.argmax(predictor.predict(x_mix_filter_1, verbose=0), 1)
+    y_predicted_2_f = tf.math.argmax(predictor.predict(x_mix_filter_2, verbose=0), 1)
+    y_predicted_mix = tf.math.argmax(predictor.predict(x_mix_filter_1, verbose=0), 1)
     y_predicted_mix_orig = tf.math.argmax(predictor.predict(x_mix_orig, verbose=0), 1)
     y_predicted = tf.math.argmax(predictor.predict(x, verbose=0), 1)
     y_predicted_1 = tf.math.argmax(predictor.predict(x_1, verbose=0), 1)
@@ -120,7 +120,7 @@ def outcomes(
     # print("MSE: ", MSE.numpy())
     MSE_1 = tf.math.reduce_mean(tf.keras.metrics.MSE(x_1, x_decoded_1))
     # print("MSE_1: ", MSE_1.numpy())
-    MSE_mix = tf.math.reduce_mean(tf.keras.metrics.MSE(x_mix_filtrado_1, x_decoded_1))
+    MSE_mix = tf.math.reduce_mean(tf.keras.metrics.MSE(x_mix_filter_1, x_decoded_1))
     # print("MSE_mix: ", MSE_mix.numpy())
     MSE_mix_orig = tf.math.reduce_mean(
         tf.keras.metrics.MSE(x_mix_orig, x_decoded_1)
@@ -135,7 +135,7 @@ def outcomes(
     )
     # print("MSE_mix_best_predicted: ", MSE_mix_best_predicted.numpy())
     MSE_mix_orig_mix = tf.math.reduce_mean(
-        tf.keras.metrics.MSE(x_mix_orig, x_mix_filtrado_1)
+        tf.keras.metrics.MSE(x_mix_orig, x_mix_filter_1)
     )  # added
     # print("MSE_mix_orig_mix: ", MSE_mix_orig_mix.numpy())
 
@@ -199,12 +199,37 @@ def outcomes(
     gt1 = x
     gt2 = x_1
     gt_mix = x_mix_orig
-    gen1 = x_mix_filtrado_1
-    gen2 = x_mix_filtrado_2
+    gen1 = x_mix_filter_1
+    gen2 = x_mix_filter_2
     gen1_d = x_decoded_1
     gen2_d = x_decoded_2
 
     bpsnr = met.batched_psnr(gt1, gt2, gen1, gen2)  # contra el digito filtrado
     bpsnr_d = met.batched_psnr(gt1, gt2, gen1_d, gen2_d)  # contra las mascaras
 
-    return (x_best_predicted_1, y_predicted_1_f, y_predicted_2_f, bpsnr,bpsnr_d)
+    # Porcentajes de detección correcta
+    accuracy_1 = tf.reduce_mean(tf.cast(tf.equal(y_predicted_1_f, y_reduced), tf.float32))
+    accuracy_2 = tf.reduce_mean(tf.cast(tf.equal(y_predicted_2_f, y_reduced), tf.float32))
+
+    # Porcentaje de detección correcta en ambas predicciones
+    accuracy_both = tf.reduce_mean(
+        tf.cast(
+            tf.logical_and(
+                tf.equal(y_predicted_1_f, y_reduced),
+                tf.equal(y_predicted_2_f, y_reduced),
+            ),
+            tf.float32,
+        )
+    )
+    accuracy_at_least_one = tf.reduce_mean(
+        tf.cast(
+            tf.logical_or(
+                tf.equal(y_predicted_1_f, y_reduced),
+                tf.equal(y_predicted_2_f, y_reduced)
+            ),
+            tf.float32,
+        )
+    )
+
+
+    return (x_best_predicted_1, y_predicted_1_f, y_predicted_2_f, bpsnr,bpsnr_d, m, accuracy_at_least_one, accuracy_both)

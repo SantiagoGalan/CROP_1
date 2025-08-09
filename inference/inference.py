@@ -1,10 +1,10 @@
 import numpy as np
 import tensorflow as tf
-import inferencias.best_digit as bd
-import inferencias.outcomes as out
-from inferencias.fotos import photo_group
+import inference.best_digit as bd
+import inference.outcomes as out
+from inference.fotos import photo_group
 import matplotlib.pyplot as plt
-import visualizaciones.visualizar as vis
+import visualizations.visualizations as vis
 
 
 import importlib
@@ -15,7 +15,7 @@ import importlib
 importlib.reload(out)
 
 
-def separar_digitos(
+def unmix(
     x_train,
     x_train_1,
     y_train,
@@ -63,7 +63,7 @@ def separar_digitos(
 
         # best_digit_var_sigmoid(x_mix_filtrado_2, x_mix_orig, alpha, bias, slope)
 
-        x_train_mix_filtrado_1, x_train_decoded_1, predicciones_1 = (
+        x_train_mix_filtrado_1, x_train_decoded_1, predictions_1 = (
             bd.best_digit_var_sigmoid(
                 x_train_mix_filtrado_2,
                 x_train_mix_orig,
@@ -77,7 +77,7 @@ def separar_digitos(
         )
         alpha_2 = alpha_2 * beta
 
-        x_train_mix_filtrado_2, x_train_decoded_2, predicciones_2 = (
+        x_train_mix_filtrado_2, x_train_decoded_2, predictions_2 = (
             bd.best_digit_var_sigmoid(
                 x_train_mix_filtrado_1,
                 x_train_mix_orig,
@@ -91,7 +91,16 @@ def separar_digitos(
         )
         alpha_1 = alpha_1 * beta
 
-    x_train_best_predicted_1, _, _, bpsnr, bpsnr_d = out.outcomes(
+    (
+        x_train_best_predicted_1,
+        _,
+        _,
+        bpsnr,
+        bpsnr_d,
+        m,
+        accuracy_at_least_one,
+        accuracy_both,
+    ) = out.outcomes(
         x_train_decoded_1,
         x_train_decoded_2,
         x_train_mix_filtrado_1,
@@ -170,4 +179,10 @@ def separar_digitos(
         )
         plt.show()
 
-    return bpsnr,bpsnr_d, predicciones_1, predicciones_2
+    return {"bpsnr":bpsnr,
+        "bpsnr_d":bpsnr_d,
+        "predictions_1": predictions_1,
+        "predictions_2": predictions_2,
+        "accuracy_at_least_one": accuracy_at_least_one,
+        "accuracy_both": accuracy_both}
+    
