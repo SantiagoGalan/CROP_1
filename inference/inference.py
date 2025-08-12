@@ -179,10 +179,11 @@ def unmix(
         )
         plt.show()
 
-    return {"bpsnr":bpsnr,
-        "bpsnr_d":bpsnr_d,
+    return {
+        "bpsnr": bpsnr,
+        "bpsnr_d": bpsnr_d,
         "predictions_1": predictions_1,
         "predictions_2": predictions_2,
         "accuracy_at_least_one": accuracy_at_least_one,
-        "accuracy_both": accuracy_both}
-    
+        "accuracy_both": accuracy_both,
+    }

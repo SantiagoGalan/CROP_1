@@ -7,10 +7,10 @@ def get_mnist_data(dataset="mnist"):
     #print("x_train(60k).shape:      ", x_train.shape)
 
     if dataset == "fashion":
-        # MNIST dataset
+
         (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
         print(f"Usando {dataset} como dataset")
-        #print("x_train(60k).shape:      ", x_train.shape)
+
     else: 
         # MNIST dataset
         (x_train, y_train), (x_test, y_test) = mnist.load_data()
