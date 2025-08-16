@@ -207,32 +207,6 @@ def outcomes(
     bpsnr = met.batched_psnr(gt1, gt2, gen1, gen2)  # contra el digito filtrado
     bpsnr_d = met.batched_psnr(gt1, gt2, gen1_d, gen2_d)  # contra las mascaras
 
-    
-    # Verificación sin importar el orden
-    correct_both = tf.reduce_all(
-        tf.sort(tf.stack([y_predicted_1_f, y_predicted_2_f], axis=1), axis=1)
-        ==
-        tf.sort(tf.stack([y_reduced, y_1_reduced], axis=1), axis=1),
-        axis=1
-    )
-
-    # Exact match de ambos dígitos (orden ignorado)
-    accuracy_both = tf.reduce_mean(tf.cast(correct_both, tf.float32))
-
-    # Al menos un dígito correcto
-    at_least_one = tf.logical_or(
-        tf.equal(y_predicted_1_f, y_reduced),
-        tf.equal(y_predicted_1_f, y_1_reduced)
-    )
-    at_least_one = tf.logical_or(
-        at_least_one,
-        tf.logical_or(
-            tf.equal(y_predicted_2_f, y_reduced),
-            tf.equal(y_predicted_2_f, y_1_reduced)
-        )
-    )
-    accuracy_at_least_one = tf.reduce_mean(tf.cast(at_least_one, tf.float32))
 
 
-
-    return (x_best_predicted_1, y_predicted_1_f, y_predicted_2_f, bpsnr,bpsnr_d, m, accuracy_at_least_one, accuracy_both)
+    return (x_best_predicted_1, y_predicted_1_f, y_predicted_2_f, bpsnr,bpsnr_d)

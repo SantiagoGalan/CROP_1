@@ -97,9 +97,6 @@ def unmix(
         _,
         bpsnr,
         bpsnr_d,
-        m,
-        accuracy_at_least_one,
-        accuracy_both,
     ) = out.outcomes(
         x_train_decoded_1,
         x_train_decoded_2,
@@ -183,7 +180,5 @@ def unmix(
         "bpsnr": bpsnr,
         "bpsnr_d": bpsnr_d,
         "predictions_1": predictions_1,
-        "predictions_2": predictions_2,
-        "accuracy_at_least_one": accuracy_at_least_one,
-        "accuracy_both": accuracy_both,
+        "predictions_2": predictions_2
     }
