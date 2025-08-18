@@ -28,8 +28,8 @@ def load_trained_model(encoder_path="", decoder_path="", predictor_path="", data
 
 
 def load_all_models(
-    encoders_paths="../../modelos_entrenados/encoders/",
-    decoders_paths="../../modelos_entrenados/decoders/",
+    encoders_paths="../../trained_models/encoders/",
+    decoders_paths="../../trained_models/decoders/",
 ):
     import os
     import sys

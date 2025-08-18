@@ -26,7 +26,7 @@ class CVAE(tf.keras.Model):
             reconstruction = self.decoder([z, cond], training=True)
             
             reconstruction_loss = tf.keras.losses.mse(tf.reshape(x, [-1, self.original_dim]),
-                                    tf.reshape(reconstruction, [-1, self.original_dim]))* self.original_dim
+                                    tf.reshape(reconstruction, [-1, self.original_dim]))* self.original_dim #???
 
             kl_loss = -0.5 * (1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
             kl_loss = tf.reduce_sum(kl_loss,-1)
