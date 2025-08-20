@@ -1,35 +1,49 @@
-def load_trained_model(encoder_path="", decoder_path="", predictor_path="", dataset=""):
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "../..")))
+from keras.models import load_model
+from custom_layers.Sampling import Sampling
+from custom_layers.ReshapeLayer import ReshapeLayer
+from data.get_data import get_mnist_data
+from models_definitions.cvae import CVAE
+
+COMMON_PATH = "../../trained_models"
+def cvae(lat, inter, dataset):
     """
     Inputs: - Models path
             - Data name ("" for mnist "fashion" for fashion mnist)
     Outputs:- Train models
             - Dataset
     """
-    import os
-    import sys
-
-    sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "../..")))
-    from keras.models import load_model
-    from custom_layers.Sampling import Sampling
-    from custom_layers.ReshapeLayer import ReshapeLayer
-    from data.get_data import get_mnist_data
-    from models_definitions.cvae import CVAE
-
-    data = get_mnist_data(dataset=dataset)
-    encoder = load_model(encoder_path, custom_objects={"Sampling": Sampling})
-    decoder = load_model(decoder_path)
+  
+    encoder = load_model(
+        f"{COMMON_PATH}/encoders/en_int_{inter}_lat_{lat}_{dataset}.keras",
+        custom_objects={"Sampling": Sampling},
+    )
+    decoder = load_model(
+        f"{COMMON_PATH}/decoders/de_int_{inter}_lat_{lat}_{dataset}.keras"
+    )
 
     cvae = CVAE(encoder=encoder, decoder=decoder, original_dim=28 * 28, beta=1)
-    #cvae.compile(optimizer="adam")
-
-    predictor = load_model(predictor_path, {"ReshapeLayer": ReshapeLayer})
-
-    return data, cvae, predictor
+    # cvae.compile(optimizer="adam")
+    return cvae
 
 
-def load_all_models(
-    encoders_paths="../../trained_models/encoders/",
-    decoders_paths="../../trained_models/decoders/",
+def data(dataset):
+    return get_mnist_data(dataset=dataset)
+
+
+def predictor(dataset):
+
+    return load_model(
+        f"{COMMON_PATH}/predictores/CCE_Conv2D_{dataset}.keras", {"ReshapeLayer": ReshapeLayer}
+    )
+
+
+def all_models(
+    encoders_paths=f"{COMMON_PATH}/encoders/",
+    decoders_paths=f"{COMMON_PATH}/decoders/",
 ):
     import os
     import sys

@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 class CVAE(tf.keras.Model):
-    def __init__(self, encoder, decoder, original_dim, beta=1.0,**kwargs):
+    def __init__(self, encoder, decoder, original_dim, beta=1.0,name="",**kwargs):
             super(CVAE, self).__init__(**kwargs)
             self.encoder = encoder
             self.decoder = decoder
@@ -10,6 +10,7 @@ class CVAE(tf.keras.Model):
             self.total_loss_tracker = tf.keras.metrics.Mean(name="total_loss")
             self.reconstruction_loss_tracker = tf.keras.metrics.Mean(name="reconstruction_loss")
             self.kl_loss_tracker = tf.keras.metrics.Mean(name="kl_loss")
+            self.name=name
 
 
     def call(self, inputs):
