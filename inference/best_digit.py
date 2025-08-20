@@ -8,8 +8,7 @@ from custom_layers.Sampling import Sampling
 
 # def function "best_digit" --------------------------------------------------
 def best_digit_var_sigmoid(
-    x_mix_filter_2, x_mix_orig, alpha, bias, slope, cvae, predictor, show_laten=False
-):
+    x_mix_filter_2, x_mix_orig, alpha, bias, slope, cvae, predictor):
 
     # First decoded image --------------------------------------------------------------
     x_mix_filter_1 = 2 * x_mix_orig - x_mix_filter_2  # Masked (Cochlear) x'2

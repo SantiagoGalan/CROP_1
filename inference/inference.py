@@ -34,8 +34,6 @@ def unmix(
 ):
 
 
-
-
     alfa_mix = 0.5
     average_image = alfa_mix * x_train.astype(np.float32) + (
         1 - alfa_mix
