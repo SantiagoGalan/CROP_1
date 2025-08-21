@@ -10,7 +10,7 @@ class CVAE(tf.keras.Model):
             self.total_loss_tracker = tf.keras.metrics.Mean(name="total_loss")
             self.reconstruction_loss_tracker = tf.keras.metrics.Mean(name="reconstruction_loss")
             self.kl_loss_tracker = tf.keras.metrics.Mean(name="kl_loss")
-            self.name=name
+            self.name = name #
 
 
     def call(self, inputs):

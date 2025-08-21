@@ -9,6 +9,8 @@ from data.get_data import get_mnist_data
 from models_definitions.cvae import CVAE
 
 COMMON_PATH = "../../trained_models"
+
+
 def cvae(lat, inter, dataset):
     """
     Inputs: - Models path
@@ -16,7 +18,7 @@ def cvae(lat, inter, dataset):
     Outputs:- Train models
             - Dataset
     """
-  
+
     encoder = load_model(
         f"{COMMON_PATH}/encoders/en_int_{inter}_lat_{lat}_{dataset}.keras",
         custom_objects={"Sampling": Sampling},
@@ -25,8 +27,13 @@ def cvae(lat, inter, dataset):
         f"{COMMON_PATH}/decoders/de_int_{inter}_lat_{lat}_{dataset}.keras"
     )
 
-    cvae = CVAE(encoder=encoder, decoder=decoder, original_dim=28 * 28, beta=1)
-    # cvae.compile(optimizer="adam")
+    cvae = CVAE(
+        encoder=encoder,
+        decoder=decoder,
+        original_dim=28 * 28,
+        beta=1,
+        name=f"cvae_laten_{lat}_inter_{inter}_{dataset}",
+    )
     return cvae
 
 
@@ -37,7 +44,8 @@ def data(dataset):
 def predictor(dataset):
 
     return load_model(
-        f"{COMMON_PATH}/predictores/CCE_Conv2D_{dataset}.keras", {"ReshapeLayer": ReshapeLayer}
+        f"{COMMON_PATH}/predictores/CCE_Conv2D_{dataset}.keras",
+        {"ReshapeLayer": ReshapeLayer},
     )
 
 
@@ -47,7 +55,6 @@ def all_models(
 ):
     import os
     import sys
-
     sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "../..")))
     from keras.models import load_model
     from custom_layers.Sampling import Sampling

@@ -19,7 +19,7 @@ class crop:
         self.alpha_1 = -2
         self.alpha_2 = -22
         self.alpha_mix = 0.5
-        self.name = " "
+        self.name = cvae.name
 
     def best_filtered_var_sigmoid(
         self, x_mix_filter_2, x_mix_orig, alpha
@@ -141,7 +141,6 @@ class crop:
         y,
         y_1,
         Iterations=3,
-        num_col=10,
         show_graph=False,
     ):
 

@@ -51,14 +51,11 @@ def variantes(cvae, condicion_id, num_variantes=10, custom_condition=None):
         condiciones = np.repeat([condicion], num_variantes, axis=0)
 
     # Generar z aleatorios ~ N(0,1)
-    latent_dim = cvae.decoder.input_shape[0][
-        1
-    ]  # obtiene la dimensión latente del input
+    latent_dim = cvae.decoder.input_shape[0][1]  # obtiene la dimensión latente del input
     z = np.random.normal(
         size=(num_variantes, latent_dim)
-    )  # (num_variantes, latent_dim)
+    ) 
 
-    # Generar imágenes con el decoder
     imgs_generadas = cvae.decoder.predict([z, condiciones])
 
     # Mostrar
@@ -143,7 +140,7 @@ def latent_space_tsne(cvae, dataset, max_samples=10000, save_path=None):
     plt.show()
 
 
-def latent_space_umap(cvae, dataset, max_samples=2000, save_path=None):
+def latent_space_umap(cvae, dataset, max_samples=2000, save_path=None, title=""):
     import matplotlib.pyplot as plt
     import numpy as np
     import umap
@@ -173,20 +170,66 @@ def latent_space_umap(cvae, dataset, max_samples=2000, save_path=None):
     reducer = umap.UMAP(n_components=2, random_state=42)
     z_umap = reducer.fit_transform(z_all)
 
-    # Guardar los datos para análisis externo
-    np.save("z_all.npy", z_all)
-    np.save("y_all.npy", y_all)
-
-    # (Opcional) también podés guardar el embedding UMAP si querés
-    np.save("z_umap.npy", z_umap)
-
     plt.figure(figsize=(8, 6))
     plt.scatter(z_umap[:, 0], z_umap[:, 1], c=y_all, cmap="tab10", alpha=0.5, s=5)
     plt.colorbar(label="Etiqueta")
     plt.xlabel("UMAP [0]")
     plt.ylabel("UMAP [1]")
-    plt.title("Espacio latente con UMAP")
+    plt.title(f"Espacio latente con UMAP {title}")
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches="tight")
     plt.show()
     plt.close()
+
+
+def variantes_punto_fijo(cvae, z_fixed=None, num_puntos=5):
+    """
+    Muestra cómo diferentes puntos latentes generan dígitos bajo distintas condiciones.
+
+    Args:
+        cvae: modelo CVAE entrenado
+        z_fixed: puntos específicos del espacio latente (si es None, se generan aleatoriamente)
+        num_puntos: número de puntos latentes a usar (solo si z_fixed es None)
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    
+    # Generar o usar puntos latentes fijos
+    latent_dim = cvae.decoder.input_shape[0][1]
+    if z_fixed is None:
+        z_fixed = np.random.normal(size=(num_puntos, latent_dim))
+    else:
+        num_puntos = z_fixed.shape[0]
+    
+    # Crear figura
+    fig, axes = plt.subplots(num_puntos, 10, figsize=(20, 2*num_puntos))
+    fig.suptitle('Diferentes dígitos generados desde puntos latentes fijos', fontsize=16)
+    
+    # Para cada punto latente
+    for i in range(num_puntos):
+        z = np.tile(z_fixed[i:i+1], (10, 1))  # Repetir el punto para cada clase
+        conditions = np.eye(10)  # One-hot para cada dígito
+        
+        # Generar imágenes
+        imgs_generadas = cvae.decoder.predict([z, conditions], verbose=0)
+        
+        # Mostrar resultados
+        for j in range(10):
+            ax = axes[i, j]
+            ax.imshow(imgs_generadas[j].reshape(28, 28), cmap='gray')
+            ax.axis('off')
+            if i == 0:  # Títulos solo en la primera fila
+                ax.set_title(f'Dígito {j}')
+        if num_puntos > 1:  # Etiquetas en el eje Y
+            axes[i, 0].set_ylabel(f'Punto {i+1}')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    return z_fixed  # Retornar los puntos para poder reusarlos
+
+# Ejemplo de uso:
+# Generar nuevos puntos:
+# z_points = variantes_punto_fijo(cvae, num_puntos=5)
+# Reusar los mismos puntos:
+# variantes_punto_fijo(cvae_1, z_fixed=z_points)
