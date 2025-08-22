@@ -52,9 +52,11 @@ def predictor(dataset):
 def all_models(
     encoders_paths=f"{COMMON_PATH}/encoders/",
     decoders_paths=f"{COMMON_PATH}/decoders/",
+    dataset="mnist"
 ):
     import os
     import sys
+
     sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "../..")))
     from keras.models import load_model
     from custom_layers.Sampling import Sampling
@@ -69,15 +71,16 @@ def all_models(
         return "_".join(filename.split("_")[2:])
 
     # Crear diccionarios clave → path
+
     encoders = {
         get_key(f): os.path.join(encoders_paths, f)
         for f in encoder_files
-        if f.endswith(".keras")
+        if f.endswith(f"{dataset}.keras")
     }
     decoders = {
         get_key(f): os.path.join(decoders_paths, f)
         for f in decoder_files
-        if f.endswith(".keras")
+        if f.endswith(f"{dataset}.keras")
     }
 
     # Claves comunes entre encoder y decoder
@@ -95,7 +98,12 @@ def all_models(
         encoder = load_model(encoder_path, custom_objects={"Sampling": Sampling})
         decoder = load_model(decoder_path)
 
-        cvae = CVAE(encoder, decoder, original_dim=28 * 28)
+        cvae = CVAE(
+            encoder,
+            decoder,
+            original_dim=28 * 28,
+            name=f"cvae_{encoder_path.split("en_")[1].split(".")[0]}",
+        )
         cvae.compile(optimizer="adam")
 
         models.append(cvae)
