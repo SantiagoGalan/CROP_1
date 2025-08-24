@@ -1,41 +1,50 @@
 import numpy as np
 import matplotlib.pyplot as plt
-# Esquema 2 c (VERTICAL Y HORIZONTAL varias columnas o filas de distinto tipo) ----------------
 
-  # def function "foto_mnist" --------------------------------------------------
-def foto_mnist(x,largo):
-    return (np.reshape(x,(largo,largo))*255).astype(np.uint8)
+def foto_mnist(x, size):
+    """Reshape a flat vector into a square image (MNIST-style)."""
+    return (np.reshape(x, (size, size)) * 255).astype(np.uint8)
 
-  # def function "photo_group" -------------------------------------------------
-def photo_group(num_row, num_col, figsize_x, figsize_y, num_pixels,
-                num_functions, num_row_group, num_col_group,
-                img_group, e_img, labels_group, labels_index):
+def photo_group(images, image_tags, labels=None, num_cols=10, img_size=28):
+    """
+    Plot images in rows, each row corresponds to a different group.
 
-    fig, axes1 = plt.subplots((num_row * num_row_group), (num_col * num_col_group), figsize=(figsize_x, figsize_y))
+    Parameters
+    ----------
+    images : list or np.ndarray
+        List of image groups. Each element should be shape (N, img_size*img_size).
+        Example: images[0] = group of 10 images from x_mix_orig.
+    image_tags : list of str
+        Names of each row (group).
+    labels : list or None
+        Optional labels per group. Not required.
+    num_cols : int
+        How many images per row.
+    img_size : int
+        Size of one side of the square image (e.g. 28 for MNIST).
+    """
+    num_groups = len(images)
+    fig, axes = plt.subplots(num_groups, num_cols, figsize=(num_cols, num_groups))
 
-    for i_group in range(num_row_group):
-        for i in range(num_row):
-            for j_group in range(num_col_group):
-                for j in range(num_col):
-                    #k = np.random.choice(range(len(img_0)))                                     # ¿sacar aleatoriedad para poder comparar?
-                    if num_row_group < num_col_group:
-                        k = j_group + i_group*num_row_group
-                        #axes1[i][j].set_axis_off()
-                        axes1[i_group*num_row + i][j_group*num_col + j].imshow(foto_mnist(img_group[k,(j)+(num_col * i),:],num_pixels),\
-                                        interpolation='nearest', cmap='gray')
-                        axes1[0][j_group*num_col].xaxis.set_label_position('top')
-                        axes1[0][j_group*num_col].set_xlabel(e_img[j_group].numpy().decode('utf-8'), fontsize=11, color='black', loc='left')
-                        axes1[i][j_group*num_col + j].tick_params(labelbottom=False, labelleft=False)
-                        axes1[i][j_group*num_col + j].tick_params(which='both', length=0)
-                    else:
-                        k = i_group + j_group*num_col_group
-                        #axes1[i][j].set_axis_off()
-                        axes1[i_group*num_row + i][j_group*num_col + j].imshow(foto_mnist(img_group[k,(i)+(num_row * j),:],num_pixels),\
-                                        interpolation='nearest', cmap='gray')
-                        axes1[0][j_group*num_col].xaxis.set_label_position('top')
-                        axes1[i_group*num_row][0].set_ylabel(e_img[i_group].numpy().decode('utf-8'), fontsize=11, color='black', loc='top')
-                #        axes1[0][j].set_xlabel(e_img[j].numpy().decode('utf-8'))
-                        axes1[i_group*num_row + i][j].tick_params(labelbottom=False, labelleft=False)
-                        axes1[i_group*num_row + i][j].tick_params(which='both', length=0)
-                    if i in labels_index:
-                        axes1[i][j_group*num_col + j].set_title((np.argmax(labels_group[i,0,k,:]), np.argmax(labels_group[i,1,k,:])))
+    if num_groups == 1:
+        axes = np.expand_dims(axes, 0)  # ensure consistent indexing
+
+    for row in range(num_groups):
+        for col in range(num_cols):
+            ax = axes[row, col]
+            ax.axis("off")
+
+            # Take image from group[row]
+            img = foto_mnist(images[row][col], img_size)
+            ax.imshow(img, cmap="gray")
+
+            # Add label on the first column only
+            if col == 0:
+                ax.set_ylabel(image_tags[row], fontsize=10, rotation=0, labelpad=30)
+
+            # Optionally titles for columns (only first row)
+            if row == 0:
+                ax.set_title(str(col), fontsize=8)
+
+    plt.tight_layout()
+    plt.show()

@@ -7,14 +7,14 @@ import matplotlib.pyplot as plt
 
 
 class crop:
-    def __init__(self, cvae, predictor, data, **kwargs):
+    def __init__(self, cvae, predictor, data, bias=None, slope=None, **kwargs):
         self.cvae = cvae
         self.predictor = predictor
         self.use_dataset = data
         self.unmix_metrics = {}
         self.reconstruction_metrics = {}
-        self.bias = 0.22
-        self.slope = 22
+        self.bias = 0.22 if bias is None else bias
+        self.slope = 22 if slope is None else slope
         self.beta = 1
         self.alpha_1 = -2
         self.alpha_2 = -22
@@ -71,67 +71,96 @@ class crop:
         x_decoded_2,
         x__x,
         x_best_predicted_1,
+        bpsnr=None,
     ):
+        """
+        Mostrar grupos de imágenes en filas, con etiquetas claras y texto escalado.
+        """
 
-        # Begin PRINT ==================================================================
-        # Parameters -----------------------------------------------------------------
-        num_row = 1  # 2
-        num_col = 10  # Number of columns per group
-        num_pixels = 28
-        num_functions = (
-            9  # Number of functions to be displayed (=num_row_group*num_col_group)
-        )
-        num_row_group = 9  # Number of group rows
-        num_col_group = 1  # Number of group columns
-        scale_factor = 1.0  # Image scale factor
-        figsize_x = num_col * num_col_group * scale_factor  # Total width of a row
-        figsize_y = num_row * num_row_group * scale_factor  # Total height of a column
-        img_group = tf.stack(
-            [
-                x_mix_orig,
-                x,
-                x_1,
-                x_mix_filtrado_1,
-                x_mix_filtrado_2,
-                x_decoded_1,
-                x_decoded_2,
-                x__x,
-                x_best_predicted_1,
-            ]
-        )
-        # Tags -----------------------------------------------------------------------
-        e_img = tf.stack(
-            [
-                "x_mix_orig",
-                "x",
-                "x_1",
-                "x_filt_1",
-                "x_filt_2",
-                "x_deco_1",
-                "x_deco_2",
-                "x__x",
-                "x_best_pred",
-            ]
-        )
-        # Labels ---------------------------------------------------------------------
-        labels_group = tf.stack([[y, y_1]])
-        labels_index = [0]  # rows with labels
-        # Plot images ----------------------------------------------------------------
+        # Lista de imágenes y etiquetas de fila
+        images = [
+            x_mix_orig,
+            x,
+            x_1,
+            x_mix_filtrado_1,
+            x_mix_filtrado_2,
+            x_decoded_1,
+            x_decoded_2,
+            x__x,
+            x_best_predicted_1,
+        ]
+        row_labels = [
+            "x_mix",
+            "x_1",
+            "x_2",
+            "x_filt_1",
+            "x_filt_2",
+            "x_deco_1",
+            "x_deco_2",
+            "x__x",
+            "x_best_pred",
+        ]
 
-        ph.photo_group(
-            num_row,
-            num_col,
-            figsize_x,
-            figsize_y,
-            num_pixels,
-            num_functions,
-            num_row_group,
-            num_col_group,
-            img_group,
-            e_img,
-            labels_group,
-            labels_index,
-        )
+        num_rows = len(images)
+        num_cols = images[0].shape[0] if len(images[0].shape) > 1 else 1
+        img_size = 28
+
+        # Figsize proporcional al número de imágenes
+        fig_width = num_cols * 1
+        fig_height = num_rows * 1
+        fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
+
+        # Asegurar que axes siempre sea 2D
+        if num_rows == 1 and num_cols == 1:
+            axes = np.array([[axes]])
+        elif num_rows == 1:
+            axes = np.expand_dims(axes, axis=0)
+        elif num_cols == 1:
+            axes = np.expand_dims(axes, axis=1)
+
+        # ---- Dibujar imágenes ----
+        for row in range(num_rows):
+            for col in range(num_cols):
+                ax = axes[row, col]
+                ax.axis("off")
+
+                # Obtener imagen
+                img = images[row][col] if num_cols > 1 else images[row]
+                if len(img.shape) == 1:
+                    img = tf.reshape(img, (img_size, img_size))
+                img = img.numpy()
+                ax.imshow(img, cmap="gray")
+
+        #            if col == 0:  # solo en la primera columna
+        #                ax.set_ylabel(
+        #                    row_labels[row],
+        #                    labelpad=40,
+        #                    va="center",
+        #                    rotation=0,
+        #                )
+
+        for row, label in enumerate(row_labels):
+            fig.text(
+                0.02,  # posición X relativa
+                # 1 - (row + 0.5) / num_rows,  # posición Y relativa
+                1 - (row + 0.75) / num_rows,
+                label,
+                va="center",
+                ha="right",
+                fontsize=img_size * 0.4,  # escala con la imagen
+                rotation=90,
+            )
+
+        # ---- Título arriba con el nombre del modelo ----
+        fig.suptitle(self.name, color="darkred")
+
+        # ---- Texto de parámetros abajo ----
+        param_text = f"bias={self.bias:.3f}, slope={self.slope:.3f}"
+        if bpsnr is not None:
+            param_text += f", bpsnr={bpsnr:.3f}"
+        fig.text(0.5, -0.02, param_text, ha="center", color="darkblue")
+        # plt.tight_layout(rect=[0.08, 0, 1, 1])  # deja más espacio a la izquierda
+        plt.tight_layout()
         plt.show()
 
     def unmix(
@@ -186,6 +215,21 @@ class crop:
             )
             self.alpha_1 = self.alpha_1 * self.beta
 
+        # ---- Normalización segura de máscaras (dentro del bucle) ----
+        # x_decoded_1 y x_decoded_2 son las máscaras que devuelve best_filtered_var_sigmoid (sigmoids en [0,1])
+
+        eps = 1e-6  # evita división por cero
+        mask_sum = x_decoded_1 + x_decoded_2
+        mask_sum = tf.maximum(mask_sum, eps)  # shape compatible
+
+        m1 = x_decoded_1 / mask_sum
+        m2 = x_decoded_2 / mask_sum
+
+        # Reconstrucción: mantenemos el factor 2 porque x_mix es un promedio (alpha_mix=0.5)
+        x_mix_filtrado_1 = tf.clip_by_value(2.0 * x_mix_orig * m1, 0.0, 1.0)
+        x_mix_filtrado_2 = tf.clip_by_value(2.0 * x_mix_orig * m2, 0.0, 1.0)
+        # parece haber una mejora???
+
         (x_best_predicted_1, _, _, bpsnr, bpsnr_d) = out.outcomes(
             x_decoded_1,
             x_decoded_2,
@@ -199,7 +243,7 @@ class crop:
             self.predictor,
         )
 
-        if show_graph == True:
+        if show_graph:
             self.graphics(
                 x_mix_orig,
                 x,
@@ -212,6 +256,7 @@ class crop:
                 x_decoded_2,
                 x__x,
                 x_best_predicted_1,
+                bpsnr=bpsnr[0],  # <--- pass the value
             )
 
         return {
