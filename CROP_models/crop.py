@@ -6,6 +6,42 @@ import inference.fotos as ph
 import matplotlib.pyplot as plt
 
 
+"""
+ → mixed_input
+(the initial mixture of both sources)
+
+source1_gt → source1_gt
+(ground truth image of source 1)
+
+source2_gt → source2_gt
+(ground truth image of source 2)
+
+source1_cond → source1_cond
+(conditioning vector/label for source 1)
+
+source2_cond → source2_cond
+(conditioning vector/label for source 2)
+
+reconstructed_source1 → reconstructed_source1
+(filtered estimate of source 1)
+
+reconstructed_source2 → reconstructed_source2
+(filtered estimate of source 2)
+
+mask_source1 → mask_source1
+(decoder mask/activation applied to mixture for source 1)
+
+mask_source2 → mask_source2
+(decoder mask/activation applied to mixture for source 2)
+
+init_placeholder → init_placeholder
+(zeros tensor used for initialization)
+
+best_prediction_source1 → best_prediction_source1
+(final refined reconstruction of source 1 after evaluation)
+"""
+
+
 class crop:
     def __init__(self, cvae, predictor, data, bias=None, slope=None, **kwargs):
         self.cvae = cvae
@@ -21,14 +57,14 @@ class crop:
         self.alpha_mix = 0.5
         self.name = cvae.name
 
-    def best_filtered_var_sigmoid(
-        self, x_mix_filter_2, x_mix_orig, alpha
-    ):  # cambiar el nombre de x_mix_filter
+    def best_filtered_var_sigmoid(self, x_mix_filter_2, mixed_input, alpha):
         # First decoded image --------------------------------------------------------------
-        x_mix_filter_1 = 2 * x_mix_orig - x_mix_filter_2  # Masked (Cochlear) x'2
+        x_mix_filter_1 = (
+            2 * mixed_input - x_mix_filter_2
+        )  # Masked (Cochlear) source1_gt'2
         x_mix_filter_1 = tf.clip_by_value(
             x_mix_filter_1, clip_value_min=0, clip_value_max=1
-        )  # Filtered mix
+        )
         condition_encoder = self.predictor.predict(
             x_mix_filter_1, verbose=0
         )  # * j * alfa     # con ponderado incremental
@@ -43,61 +79,58 @@ class crop:
 
         z = Sampling()((encoded_imgs[0], zz_log_var))  # (z_mean, z_log_var)
 
-        x_decoded_1 = self.cvae.decoder.predict(
-            [z, condition_decoder_1], verbose=0
-        )  # ver si self.cvae.decoder.predict(self.cvae.encoder.predict()) == self.cave.predict
-        x_decoded_1 = (
-            x_decoded_1 - self.bias
+        mask_source1 = self.cvae.decoder.predict([z, condition_decoder_1], verbose=0)
+        mask_source1 = (
+            mask_source1 - self.bias
         ) * self.slope  # son parametros entrenable?
-        x_decoded_1 = tf.sigmoid(x_decoded_1)
+        mask_source1 = tf.sigmoid(mask_source1)
 
-        x_mix_filter_1 = 2 * x_mix_orig * x_decoded_1  # Masked (Cochlear)
+        x_mix_filter_1 = 2 * mixed_input * mask_source1  # Masked (Cochlear)
         x_mix_filter_1 = tf.clip_by_value(
             x_mix_filter_1, clip_value_min=0, clip_value_max=1
         )
 
-        return (x_mix_filter_1, x_decoded_1, condition_encoder)
+        return (x_mix_filter_1, mask_source1, condition_encoder)
 
     def graphics(
         self,
-        x_mix_orig,
-        x,
-        x_1,
-        y,
-        y_1,
-        x_mix_filtrado_1,
-        x_mix_filtrado_2,
-        x_decoded_1,
-        x_decoded_2,
-        x__x,
-        x_best_predicted_1,
+        mixed_input,
+        source1_gt,
+        source2_gt,
+        source1_cond,
+        source2_cond,
+        reconstructed_source1,
+        reconstructed_source2,
+        mask_source1,
+        mask_source2,
+        init_placeholder,
+        best_prediction_source1,
         bpsnr=None,
+        acc_at_least_one=None,
+        acc_both=None,
+        save_path=None,
     ):
-        """
-        Mostrar grupos de imágenes en filas, con etiquetas claras y texto escalado.
-        """
 
-        # Lista de imágenes y etiquetas de fila
         images = [
-            x_mix_orig,
-            x,
-            x_1,
-            x_mix_filtrado_1,
-            x_mix_filtrado_2,
-            x_decoded_1,
-            x_decoded_2,
-            x__x,
-            x_best_predicted_1,
+            mixed_input,
+            source1_gt,
+            source2_gt,
+            reconstructed_source1,
+            reconstructed_source2,
+            mask_source1,
+            mask_source2,
+            init_placeholder,
+            best_prediction_source1,
         ]
         row_labels = [
             "x_mix",
-            "x_1",
+            "source2_gt",
             "x_2",
             "x_filt_1",
             "x_filt_2",
             "x_deco_1",
             "x_deco_2",
-            "x__x",
+            "init_placeholder",
             "x_best_pred",
         ]
 
@@ -130,7 +163,7 @@ class crop:
                     img = tf.reshape(img, (img_size, img_size))
                 img = img.numpy()
                 ax.imshow(img, cmap="gray")
-
+        """
         #            if col == 0:  # solo en la primera columna
         #                ax.set_ylabel(
         #                    row_labels[row],
@@ -141,122 +174,139 @@ class crop:
 
         for row, label in enumerate(row_labels):
             fig.text(
-                0.02,  # posición X relativa
-                # 1 - (row + 0.5) / num_rows,  # posición Y relativa
-                1 - (row + 0.75) / num_rows,
+                0.02,  # posición source1_gt relativa
+                1 - (row + 0.5) / num_rows,  # posición source1_cond relativa
+                1 - (row + 0.5) / num_rows,
                 label,
                 va="center",
                 ha="right",
                 fontsize=img_size * 0.4,  # escala con la imagen
                 rotation=90,
             )
-
+        """
         # ---- Título arriba con el nombre del modelo ----
         fig.suptitle(self.name, color="darkred")
 
         # ---- Texto de parámetros abajo ----
         param_text = f"bias={self.bias:.3f}, slope={self.slope:.3f}"
-        if bpsnr is not None:
-            param_text += f", bpsnr={bpsnr:.3f}"
         fig.text(0.5, -0.02, param_text, ha="center", color="darkblue")
-        # plt.tight_layout(rect=[0.08, 0, 1, 1])  # deja más espacio a la izquierda
+        fig.text(
+            0.5,
+            -0.05,
+            f"bpsnr={bpsnr:.3f}, acc_one={acc_at_least_one} acc_both={acc_both}",
+            ha="center",
+            color="darkblue",
+        )
         plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
         plt.show()
 
     def unmix(
         self,
-        x,
-        x_1,
-        y,
-        y_1,
+        source1_gt,
+        source2_gt,
+        source1_cond,
+        source2_cond,
         Iterations=3,
-        show_graph=False,
+        show_image=False,
+        save_path=None,
     ):
 
-        average_image = self.alpha_mix * x.astype(np.float32) + (
+        average_image = self.alpha_mix * source1_gt.astype(np.float32) + (
             1 - self.alpha_mix
-        ) * x_1.astype(np.float32)
+        ) * source2_gt.astype(np.float32)
         x_mix = average_image
 
         ## Initialization
-        x_mix_orig = x_mix
-        x_decoded_1 = (
+        mixed_input = x_mix
+        mask_source1 = (
             x_mix  # Added in order to improve the prediction in each iteration
         )
 
-        x_decoded_2 = (
+        mask_source2 = (
             x_mix  # Added in order to improve the prediction in each iteration
         )
         x_mix_IN = (
             x_mix  # Added in order to improve more the prediction in each iteration
         )
-        x_mix_filtrado_1 = (
+        reconstructed_source1 = (
             x_mix  # Added in order to improve more the prediction in each iteration
         )
-        x_mix_filtrado_2 = (
+        reconstructed_source2 = (
             x_mix  # Added in order to improve more the prediction in each iteration
         )
-        x__x = tf.zeros_like(x_mix)
-        # condition_encoder = tf.zeros_like(y)
+        init_placeholder = tf.zeros_like(x_mix)
+        # condition_encoder = tf.zeros_like(source1_cond)
 
         for j in range(Iterations):
 
-            x_mix_filtrado_1, x_decoded_1, predictions_1 = (
+            reconstructed_source1, mask_source1, predictions_1 = (
                 self.best_filtered_var_sigmoid(
-                    x_mix_filtrado_2, x_mix_orig, self.alpha_2
+                    reconstructed_source2, mixed_input, self.alpha_2
                 )
             )
             self.alpha_2 = self.alpha_2 * self.beta
 
-            x_mix_filtrado_2, x_decoded_2, predictions_2 = (
+            reconstructed_source2, mask_source2, predictions_2 = (
                 self.best_filtered_var_sigmoid(
-                    x_mix_filtrado_1, x_mix_orig, self.alpha_1
+                    reconstructed_source1, mixed_input, self.alpha_1
                 )
             )
             self.alpha_1 = self.alpha_1 * self.beta
 
         # ---- Normalización segura de máscaras (dentro del bucle) ----
-        # x_decoded_1 y x_decoded_2 son las máscaras que devuelve best_filtered_var_sigmoid (sigmoids en [0,1])
+        # mask_source1 source1_cond mask_source2 son las máscaras que devuelve best_filtered_var_sigmoid (sigmoids en [0,1])
 
-        eps = 1e-6  # evita división por cero
-        mask_sum = x_decoded_1 + x_decoded_2
+        eps = 1e-6  
+        mask_sum = mask_source1 + mask_source2
         mask_sum = tf.maximum(mask_sum, eps)  # shape compatible
 
-        m1 = x_decoded_1 / mask_sum
-        m2 = x_decoded_2 / mask_sum
+        m1 = mask_source1 / mask_sum
+        m2 = mask_source2 / mask_sum
 
-        # Reconstrucción: mantenemos el factor 2 porque x_mix es un promedio (alpha_mix=0.5)
-        x_mix_filtrado_1 = tf.clip_by_value(2.0 * x_mix_orig * m1, 0.0, 1.0)
-        x_mix_filtrado_2 = tf.clip_by_value(2.0 * x_mix_orig * m2, 0.0, 1.0)
-        # parece haber una mejora???
+        reconstructed_source1 = tf.clip_by_value(2.0 * mixed_input * m1, 0.0, 1.0)
+        reconstructed_source2 = tf.clip_by_value(2.0 * mixed_input * m2, 0.0, 1.0)
+        #parece haber una mejora???
 
-        (x_best_predicted_1, _, _, bpsnr, bpsnr_d) = out.outcomes(
-            x_decoded_1,
-            x_decoded_2,
-            x_mix_filtrado_1,
-            x_mix_filtrado_2,
-            x_mix_orig,
-            x,
-            x_1,
-            y,
-            y_1,
+        (
+            best_prediction_source1,
+            y_predicted_s1_recon,
+            y_predicted_s2_recon,
+            bpsnr,
+            bpsnr_d,
+            acc_at_least_one,
+            acc_both,
+        ) = out.outcomes(
+            mask_source1,
+            mask_source2,
+            reconstructed_source1,
+            reconstructed_source2,
+            mixed_input,
+            source1_gt,
+            source2_gt,
+            source1_cond,
+            source2_cond,
             self.predictor,
         )
 
-        if show_graph:
+        if show_image:
             self.graphics(
-                x_mix_orig,
-                x,
-                x_1,
-                y,
-                y_1,
-                x_mix_filtrado_1,
-                x_mix_filtrado_2,
-                x_decoded_1,
-                x_decoded_2,
-                x__x,
-                x_best_predicted_1,
-                bpsnr=bpsnr[0],  # <--- pass the value
+                mixed_input,
+                source1_gt,
+                source2_gt,
+                source1_cond,
+                source2_cond,
+                reconstructed_source1,
+                reconstructed_source2,
+                mask_source1,
+                mask_source2,
+                init_placeholder,
+                best_prediction_source1,
+                bpsnr=bpsnr[0],  # mean value
+                acc_at_least_one=acc_at_least_one,
+                acc_both=acc_both,
+                save_path=save_path,
             )
 
         return {
@@ -264,6 +314,8 @@ class crop:
             "bpsnr_d": bpsnr_d,
             "predictions_1": predictions_1,
             "predictions_2": predictions_2,
+            "acc_at_least_one": acc_at_least_one,
+            "acc_both": acc_both,
         }
 
     def reconstruct(self, input_image, intput_cond, output_cond=None, title=""):
