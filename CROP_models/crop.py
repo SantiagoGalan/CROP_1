@@ -80,9 +80,7 @@ class crop:
         z = Sampling()((encoded_imgs[0], zz_log_var))  # (z_mean, z_log_var)
 
         mask_source1 = self.cvae.decoder.predict([z, condition_decoder_1], verbose=0)
-        mask_source1 = (
-            mask_source1 - self.bias
-        ) * self.slope  # son parametros entrenable?
+        mask_source1 = ( mask_source1 - self.bias ) * self.slope 
         mask_source1 = tf.sigmoid(mask_source1)
 
         x_mix_filter_1 = 2 * mixed_input * mask_source1  # Masked (Cochlear)
@@ -163,27 +161,26 @@ class crop:
                     img = tf.reshape(img, (img_size, img_size))
                 img = img.numpy()
                 ax.imshow(img, cmap="gray")
-        """
-        #            if col == 0:  # solo en la primera columna
-        #                ax.set_ylabel(
-        #                    row_labels[row],
-        #                    labelpad=40,
-        #                    va="center",
-        #                    rotation=0,
-        #                )
-
-        for row, label in enumerate(row_labels):
-            fig.text(
-                0.02,  # posición source1_gt relativa
-                1 - (row + 0.5) / num_rows,  # posición source1_cond relativa
-                1 - (row + 0.5) / num_rows,
-                label,
-                va="center",
-                ha="right",
-                fontsize=img_size * 0.4,  # escala con la imagen
-                rotation=90,
-            )
-        """
+        
+                if col == 0:  # solo en la primera columna
+                    ax.set_ylabel(
+                        row_labels[row],
+                        labelpad=40,
+                        va="center",
+                        rotation=0,
+                    )
+        # for row, label in enumerate(row_labels):
+        #     fig.text(
+        #         0.02,  # posición source1_gt relativa
+        #         1 - (row + 0.5) / num_rows,  # posición source1_cond relativa
+        #         1 - (row + 0.5) / num_rows,
+        #         label,
+        #         va="center",
+        #         ha="right",
+        #         fontsize=img_size * 0.4,  # escala con la imagen
+        #         rotation=90,
+        #     )
+        
         # ---- Título arriba con el nombre del modelo ----
         fig.suptitle(self.name, color="darkred")
 
@@ -219,25 +216,16 @@ class crop:
         x_mix = average_image
 
         ## Initialization
+        #inicialmente todas las variables son el input.
         mixed_input = x_mix
-        mask_source1 = (
-            x_mix  # Added in order to improve the prediction in each iteration
-        )
-
-        mask_source2 = (
-            x_mix  # Added in order to improve the prediction in each iteration
-        )
-        x_mix_IN = (
-            x_mix  # Added in order to improve more the prediction in each iteration
-        )
-        reconstructed_source1 = (
-            x_mix  # Added in order to improve more the prediction in each iteration
-        )
-        reconstructed_source2 = (
-            x_mix  # Added in order to improve more the prediction in each iteration
-        )
+        mask_source1 = ( x_mix )
+        mask_source2 = ( x_mix )
+        reconstructed_source1 = ( x_mix )
+        reconstructed_source2 = ( x_mix )
         init_placeholder = tf.zeros_like(x_mix)
+ 
         # condition_encoder = tf.zeros_like(source1_cond)
+
 
         for j in range(Iterations):
 
@@ -260,7 +248,7 @@ class crop:
 
         eps = 1e-6  
         mask_sum = mask_source1 + mask_source2
-        mask_sum = tf.maximum(mask_sum, eps)  # shape compatible
+        #mask_sum = tf.maximum(mask_sum, eps) 
 
         m1 = mask_source1 / mask_sum
         m2 = mask_source2 / mask_sum
