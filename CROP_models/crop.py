@@ -226,36 +226,28 @@ class crop:
  
         # condition_encoder = tf.zeros_like(source1_cond)
 
-
         for j in range(Iterations):
-
-            reconstructed_source1, mask_source1, predictions_1 = (
-                self.best_filtered_var_sigmoid(
-                    reconstructed_source2, mixed_input, self.alpha_2
-                )
+            # Estimación de la fuente 1
+            reconstructed_source1, mask_source1, predictions_1 = self.best_filtered_var_sigmoid(
+                reconstructed_source2, mixed_input, self.alpha_2
             )
-            self.alpha_2 = self.alpha_2 * self.beta
+            self.alpha_2 *= self.beta
 
-            reconstructed_source2, mask_source2, predictions_2 = (
-                self.best_filtered_var_sigmoid(
-                    reconstructed_source1, mixed_input, self.alpha_1
-                )
+            # Estimación de la fuente 2
+            reconstructed_source2, mask_source2, predictions_2 = self.best_filtered_var_sigmoid(
+                reconstructed_source1, mixed_input, self.alpha_1
             )
-            self.alpha_1 = self.alpha_1 * self.beta
+            self.alpha_1 *= self.beta
 
-        # ---- Normalización segura de máscaras (dentro del bucle) ----
-        # mask_source1 source1_cond mask_source2 son las máscaras que devuelve best_filtered_var_sigmoid (sigmoids en [0,1])
+            # --- Normalización dentro del loop ---
+            eps = 1e-6
+            mask_sum = tf.maximum(mask_source1 + mask_source2, eps)
+            mask_source1 = mask_source1 / mask_sum
+            mask_source2 = mask_source2 / mask_sum
 
-        eps = 1e-6  
-        mask_sum = mask_source1 + mask_source2
-        #mask_sum = tf.maximum(mask_sum, eps) 
-
-        m1 = mask_source1 / mask_sum
-        m2 = mask_source2 / mask_sum
-
-        reconstructed_source1 = tf.clip_by_value(2.0 * mixed_input * m1, 0.0, 1.0)
-        reconstructed_source2 = tf.clip_by_value(2.0 * mixed_input * m2, 0.0, 1.0)
-        #parece haber una mejora???
+            # Aplicar máscaras normalizadas para la próxima iteración
+            reconstructed_source1 = tf.clip_by_value(2.0 * mixed_input * mask_source1, 0.0, 1.0)
+            reconstructed_source2 = tf.clip_by_value(2.0 * mixed_input * mask_source2, 0.0, 1.0)
 
         (
             best_prediction_source1,
