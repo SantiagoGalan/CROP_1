@@ -205,10 +205,12 @@ class crop:
         source2_gt,
         source1_cond,
         source2_cond,
-        Iterations=3,
+        iterations=3,
         show_image=False,
         save_path=None,
+        curve=False,
     ):
+        import inference.metrics as met
 
         average_image = self.alpha_mix * source1_gt.astype(np.float32) + (
             1 - self.alpha_mix
@@ -225,9 +227,10 @@ class crop:
         init_placeholder = tf.zeros_like(x_mix)
  
         # condition_encoder = tf.zeros_like(source1_cond)
-
-
-        for j in range(Iterations):
+        acc_at_least_one_plot = []
+        acc_both_plot = []
+        
+        for j in range(iterations):
 
             reconstructed_source1, mask_source1, predictions_1 = (
                 self.best_filtered_var_sigmoid(
@@ -243,19 +246,21 @@ class crop:
             )
             self.alpha_1 = self.alpha_1 * self.beta
 
-        # ---- Normalización segura de máscaras (dentro del bucle) ----
-        # mask_source1 source1_cond mask_source2 son las máscaras que devuelve best_filtered_var_sigmoid (sigmoids en [0,1])
+            if curve:
+                y_predicted_s1_recon = self.predictor.predict(reconstructed_source1, verbose=0)
+                y_predicted_s2_recon = self.predictor.predict(reconstructed_source2, verbose=0)
+                
+                acc_at_least_one, acc_both = met.accuracys(
+                p1=y_predicted_s1_recon,
+                p2=y_predicted_s2_recon,
+                y1=source1_cond,
+                y2=source2_cond)
 
-        eps = 1e-6  
-        mask_sum = mask_source1 + mask_source2
-        #mask_sum = tf.maximum(mask_sum, eps) 
+                acc_at_least_one_plot.append(acc_at_least_one)
+                acc_both_plot.append(acc_both)
+        if curve:
+            return{ "acc_at_least_one_plot":acc_at_least_one_plot, "acc_both_plot":acc_both_plot}
 
-        m1 = mask_source1 / mask_sum
-        m2 = mask_source2 / mask_sum
-
-        reconstructed_source1 = tf.clip_by_value(2.0 * mixed_input * m1, 0.0, 1.0)
-        reconstructed_source2 = tf.clip_by_value(2.0 * mixed_input * m2, 0.0, 1.0)
-        #parece haber una mejora???
 
         (
             best_prediction_source1,
@@ -298,12 +303,12 @@ class crop:
             )
 
         return {
-            "bpsnr": bpsnr,
-            "bpsnr_d": bpsnr_d,
-            "predictions_1": predictions_1,
-            "predictions_2": predictions_2,
-            "acc_at_least_one": acc_at_least_one,
-            "acc_both": acc_both,
+            "bpsnr": bpsnr if bpsnr is not None else None, 
+            "bpsnr_d": bpsnr_d if bpsnr_d is not None else None,
+            "predictions_1": predictions_1 if predictions_1 is not None else None,
+            "predictions_2": predictions_2 if predictions_2 is not None else None,
+            "acc_at_least_one": acc_at_least_one if acc_at_least_one is not None else None,
+            "acc_both": acc_both if acc_both is not None else None,
         }
 
     def reconstruct(self, input_image, intput_cond, output_cond=None, title=""):
