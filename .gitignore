@@ -35,3 +35,4 @@ pycache
 pyvenv.cfg
 lib64
 bin
+.png
