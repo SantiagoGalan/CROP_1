@@ -209,6 +209,7 @@ class crop:
         iterations=3,
         show_image=False,
         save_path=None,
+        gamma=0.33
     ):
 
         average_image = self.alpha_mix * source1_gt.astype(np.float32) + (
@@ -240,7 +241,7 @@ class crop:
 
             x__x_e = x__x - x_mix
 
-            reconstructed_source1 = reconstructed_source1 - (x__x_e * self.gamma)
+            reconstructed_source1 = reconstructed_source1 - (x__x_e * gamma)
 
             reconstructed_source1 = tf.clip_by_value(
                 reconstructed_source1, clip_value_min=0, clip_value_max=1
@@ -257,7 +258,7 @@ class crop:
             x__x = (reconstructed_source1 + reconstructed_source2) / 2
             x__x_e = x__x - x_mix
 
-            reconstructed_source2 = reconstructed_source2 - (x__x_e * self.gamma)
+            reconstructed_source2 = reconstructed_source2 - (x__x_e * gamma)
 
             reconstructed_source2 = tf.clip_by_value(
                 reconstructed_source2, clip_value_min=0, clip_value_max=1
