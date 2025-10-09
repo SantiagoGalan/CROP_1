@@ -209,6 +209,7 @@ class crop:
         show_image=False,
         save_path=None,
         curve=False,
+        gamma=0.33 # algunos cambios para probar crop2 
     ):
         import inference.metrics as met
 
@@ -229,7 +230,7 @@ class crop:
         # condition_encoder = tf.zeros_like(source1_cond)
         acc_at_least_one_plot = []
         acc_both_plot = []
-        
+                
         for j in range(iterations):
 
             reconstructed_source1, mask_source1, predictions_1 = (
@@ -237,15 +238,39 @@ class crop:
                     reconstructed_source2, mixed_input, self.alpha_2
                 )
             )
+
             self.alpha_2 = self.alpha_2 * self.beta
+
+            # algunos cambios para probar crop2 
+            x__x = (reconstructed_source1 + reconstructed_source2) / 2 # propuesta-> cambiar por alpha, más logica para decidir cual reconstruccion esta asociada a cada imagen fuente. 
+
+            x__x_e = x__x - x_mix
+
+            reconstructed_source1 = reconstructed_source1 - (x__x_e * gamma)
+
+            reconstructed_source1 = tf.clip_by_value(
+                reconstructed_source1, clip_value_min=0, clip_value_max=1
+            )
 
             reconstructed_source2, mask_source2, predictions_2 = (
                 self.best_filtered_var_sigmoid(
                     reconstructed_source1, mixed_input, self.alpha_1
                 )
             )
-            self.alpha_1 = self.alpha_1 * self.beta
 
+            self.alpha_1 = self.alpha_1 * self.beta
+            
+            # algunos cambios para probar crop2 
+            x__x = (reconstructed_source1 + reconstructed_source2) / 2
+            x__x_e = x__x - x_mix
+
+            reconstructed_source2 = reconstructed_source2 - (x__x_e * gamma)
+
+            reconstructed_source2 = tf.clip_by_value(
+                reconstructed_source2, clip_value_min=0, clip_value_max=1
+            )
+
+            # algunos cambios para probar crop2 
             if curve:
                 y_predicted_s1_recon = self.predictor.predict(reconstructed_source1, verbose=0)
                 y_predicted_s2_recon = self.predictor.predict(reconstructed_source2, verbose=0)
@@ -260,7 +285,7 @@ class crop:
                 acc_both_plot.append(acc_both)
         if curve:
             return{ "acc_at_least_one_plot":acc_at_least_one_plot, "acc_both_plot":acc_both_plot}
-
+        # algunos cambios para probar crop2 
 
         (
             best_prediction_source1,
@@ -320,3 +345,4 @@ class crop:
         plt.imshow(reconstructed.reshape(28, 28), cmap="gray")
         plt.title(title, fontsize=8)
         return reconstructed
+
