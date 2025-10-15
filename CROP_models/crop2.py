@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 from custom_layers.Sampling import Sampling
 from inference.outcomes import outcomes
-from inference.fotos import photo_group
 import matplotlib.pyplot as plt
 
 
@@ -239,7 +238,7 @@ class crop2:
             #
             x__x = (reconstructed_source1 + reconstructed_source2) / 2
 
-            x__x_e = x__x - x_mix
+            x__x_e = x__x - mixed_input
 
             reconstructed_source1 = reconstructed_source1 - (x__x_e * gamma)
 
@@ -256,7 +255,7 @@ class crop2:
             self.alpha_1 = self.alpha_1 * self.beta
 
             x__x = (reconstructed_source1 + reconstructed_source2) / 2
-            x__x_e = x__x - x_mix
+            x__x_e = x__x - mixed_input
 
             reconstructed_source2 = reconstructed_source2 - (x__x_e * gamma)
 
