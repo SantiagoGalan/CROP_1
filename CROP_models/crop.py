@@ -205,10 +205,13 @@ class crop:
         source2_gt,
         source1_cond,
         source2_cond,
-        Iterations=3,
+        iterations=3,
         show_image=False,
         save_path=None,
+        curve=False,
+        gamma=0.33 # algunos cambios para probar crop2 
     ):
+        import inference.metrics as met
 
         average_image = self.alpha_mix * source1_gt.astype(np.float32) + (
             1 - self.alpha_mix
@@ -225,6 +228,10 @@ class crop:
         init_placeholder = tf.zeros_like(x_mix)
  
         # condition_encoder = tf.zeros_like(source1_cond)
+        acc_at_least_one_plot = []
+        acc_both_plot = []
+                
+        for j in range(iterations):
 
         for j in range(Iterations):
             # Estimación de la fuente 1
@@ -295,12 +302,12 @@ class crop:
             )
 
         return {
-            "bpsnr": bpsnr,
-            "bpsnr_d": bpsnr_d,
-            "predictions_1": predictions_1,
-            "predictions_2": predictions_2,
-            "acc_at_least_one": acc_at_least_one,
-            "acc_both": acc_both,
+            "bpsnr": bpsnr if bpsnr is not None else None, 
+            "bpsnr_d": bpsnr_d if bpsnr_d is not None else None,
+            "predictions_1": predictions_1 if predictions_1 is not None else None,
+            "predictions_2": predictions_2 if predictions_2 is not None else None,
+            "acc_at_least_one": acc_at_least_one if acc_at_least_one is not None else None,
+            "acc_both": acc_both if acc_both is not None else None,
         }
 
     def reconstruct(self, input_image, intput_cond, output_cond=None, title=""):
@@ -312,3 +319,4 @@ class crop:
         plt.imshow(reconstructed.reshape(28, 28), cmap="gray")
         plt.title(title, fontsize=8)
         return reconstructed
+
