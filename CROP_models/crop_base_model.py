@@ -3,7 +3,8 @@ import numpy as np
 from custom_layers.Sampling import Sampling
 import inference.outcomes as out
 import matplotlib.pyplot as plt
-from abc import ABC, abstractmethod
+import inference.metrics as met
+from abc import abstractmethod
 
 """
 x_mix_orig → mixed_input
@@ -42,7 +43,9 @@ x_best_predicted_1 → best_prediction_source1
 
 
 class CropBaseModel:
-    def __init__(self, cvae, predictor, data, bias=None, slope=None, **kwargs):
+    def __init__(
+        self, cvae, predictor, data, bias=None, slope=None, gamma=None,**kwargs
+    ):
         self.cvae = cvae
         self.predictor = predictor
         self.use_dataset = data
@@ -55,7 +58,7 @@ class CropBaseModel:
         self.alpha_2 = -22
         self.alpha_mix = 0.5
         self.name = cvae.name
-        self.gamma = 0.33
+        self.gamma = 0.33 if gamma is None else gamma
 
     def best_filtered_var_sigmoid(self, x_mix_filter_2, mixed_input, alpha):
         # First decoded image --------------------------------------------------------------
@@ -85,7 +88,7 @@ class CropBaseModel:
         )
 
         return (x_mix_filter_1, mask_source1, condition_encoder)
-    
+
     @abstractmethod
     def decoded_funtion(
         mixed_input,
@@ -108,13 +111,29 @@ class CropBaseModel:
         reconstructed_source2,
         mask_source1,
         mask_source2,
+        predictions_1,
+        predictions_2,
         init_placeholder,
         best_prediction_source1,
         bpsnr=None,
         acc_at_least_one=None,
         acc_both=None,
         save_path=None,
+        class_labels=None,  # <- NUEVO parámetro opcional
     ):
+            # Labels en español (Fashion-MNIST)
+        labels_es = [
+            "remera",    # 0
+            "pantalón",  # 1
+            "suéter",    # 2
+            "vestido",   # 3
+            "campera",   # 4
+            "sandalia",  # 5
+            "camisa",    # 6
+            "zapatilla", # 7
+            "bolso",     # 8
+            "bota",      # 9
+        ]
 
         images = [
             mixed_input,
@@ -168,24 +187,30 @@ class CropBaseModel:
                 img = img.numpy()
                 ax.imshow(img, cmap="gray")
 
-                if col == 0:  # solo en la primera columna
+                # Etiquetas de fila a la izquierda
+                if col == 0:
                     ax.set_ylabel(
                         row_labels[row],
                         labelpad=40,
                         va="center",
                         rotation=0,
                     )
-        # for row, label in enumerate(row_labels):
-        #     fig.text(
-        #         0.02,  # posición source1_gt relativa
-        #         1 - (row + 0.5) / num_rows,  # posición source1_cond relativa
-        #         1 - (row + 0.5) / num_rows,
-        #         label,
-        #         va="center",
-        #         ha="right",
-        #         fontsize=img_size * 0.4,  # escala con la imagen
-        #         rotation=90,
-        #     )
+
+                # ---- Mostrar clase debajo en filas 2–5 (row=1..4) ----
+                # Usamos labels_es[row] porque row==1 -> label índice 1 ('pantalón'), etc.
+                if 1 <= row <= 4:
+                    # proteger por si por alguna razón row > len(labels_es)-1 (no debería)
+                    class_name = labels_es[row] if row < len(labels_es) else "?"
+                    ax.text(
+                        0.5,        # centrado horizontalmente (coordenadas en axes)
+                        -0.12,      # posición un poco debajo de la imagen
+                        class_name,
+                        color="black",
+                        fontsize=8,
+                        ha="center",
+                        va="top",
+                        transform=ax.transAxes,
+                    )
 
         # ---- Título arriba con el nombre del modelo ----
         fig.suptitle(self.name, color="darkred")
@@ -200,10 +225,12 @@ class CropBaseModel:
             ha="center",
             color="darkblue",
         )
+
         plt.tight_layout()
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches="tight")
         plt.show()
+
 
     def unmix(
         self,
@@ -237,8 +264,8 @@ class CropBaseModel:
                 mask_source2,
                 reconstructed_source1,
                 reconstructed_source2,
-                predictions_1, 
-                predictions_2
+                predictions_1,
+                predictions_2,
             ) = self.decoded_funtion(
                 mixed_input,
                 mask_source1,
@@ -247,7 +274,12 @@ class CropBaseModel:
                 reconstructed_source2,
                 init_placeholder,
             )
-
+        print("---------------------------------")
+        print("predictions_1: ", predictions_1)
+        print("---------------------------------")
+        print("predictions_2: ", predictions_2)
+        print("---------------------------------")
+        
         (
             best_prediction_source1,
             y_predicted_s1_recon,
@@ -280,6 +312,8 @@ class CropBaseModel:
                 reconstructed_source2,
                 mask_source1,
                 mask_source2,
+                predictions_1,
+                predictions_2,
                 init_placeholder,
                 best_prediction_source1,
                 bpsnr=bpsnr[0],  # mean value
@@ -294,6 +328,74 @@ class CropBaseModel:
             "predictions_2": predictions_2,
             "acc_at_least_one": acc_at_least_one,
             "acc_both": acc_both,
+        }
+
+    def get_curve(
+        self,
+        source1_gt,
+        source2_gt,
+        source1_cond,
+        source2_cond,
+        iterations=3,
+        show_image=False,
+        save_path=None,
+    ):
+
+        average_image = self.alpha_mix * source1_gt.astype(np.float32) + (
+            1 - self.alpha_mix
+        ) * source2_gt.astype(np.float32)
+        x_mix = average_image
+
+        # inicialmente todas las variables son el input.
+        mixed_input = x_mix
+        mask_source1 = x_mix
+        mask_source2 = x_mix
+        reconstructed_source1 = x_mix
+        reconstructed_source2 = x_mix
+        init_placeholder = tf.zeros_like(x_mix)
+
+        # condition_encoder = tf.zeros_like(source1_cond)
+
+        acc_at_least_one_plot = []
+        acc_both_plot = []
+
+        for j in range(iterations):
+            (
+                mask_source1,
+                mask_source2,
+                reconstructed_source1,
+                reconstructed_source2,
+                predictions_1,
+                predictions_2,
+            ) = self.decoded_funtion(
+                mixed_input,
+                mask_source1,
+                mask_source2,
+                reconstructed_source1,
+                reconstructed_source2,
+                init_placeholder,
+            )
+
+            y_predicted_s1_recon = self.predictor.predict(
+                reconstructed_source1, verbose=0
+            )
+            y_predicted_s2_recon = self.predictor.predict(
+                reconstructed_source2, verbose=0
+            )
+
+            acc_at_least_one, acc_both = met.accuracys(
+                p1=y_predicted_s1_recon,
+                p2=y_predicted_s2_recon,
+                y1=source1_cond,
+                y2=source2_cond,
+            )
+
+            acc_at_least_one_plot.append(acc_at_least_one)
+            acc_both_plot.append(acc_both)
+
+        return {
+            "acc_at_least_one_plot": acc_at_least_one_plot,
+            "acc_both_plot": acc_both_plot,
         }
 
     def reconstruct(self, input_image, intput_cond, output_cond=None, title=""):
