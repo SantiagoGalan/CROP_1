@@ -44,7 +44,7 @@ x_best_predicted_1 → best_prediction_source1
 
 class CropBaseModel:
     def __init__(
-        self, cvae, predictor, data, bias=None, slope=None, gamma=None,**kwargs
+        self, cvae, predictor, data, bias=None, slope=None, gamma=None, **kwargs
     ):
         self.cvae = cvae
         self.predictor = predictor
@@ -119,21 +119,34 @@ class CropBaseModel:
         acc_at_least_one=None,
         acc_both=None,
         save_path=None,
-        class_labels=None,  # <- NUEVO parámetro opcional
+        class_labels=None,
     ):
-            # Labels en español (Fashion-MNIST)
+        # Labels en español (Fashion-MNIST)
         labels_es = [
-            "remera",    # 0
+            "remera",  # 0
             "pantalón",  # 1
-            "suéter",    # 2
-            "vestido",   # 3
-            "campera",   # 4
+            "suéter",  # 2
+            "vestido",  # 3
+            "campera",  # 4
             "sandalia",  # 5
-            "camisa",    # 6
-            "zapatilla", # 7
-            "bolso",     # 8
-            "bota",      # 9
+            "camisa",  # 6
+            "zapatilla",  # 7
+            "bolso",  # 8
+            "bota",  # 9
         ]
+        # labels_es = [
+        #     "cero",  # 0
+        #     "uno",  # 1
+        #     "dos",  # 2
+        #     "tres",  # 3
+        #     "cuatro",  # 4
+        #     "cinco",  # 5
+        #     "seis",  # 6
+        #     "siete",  # 7
+        #     "ocho",  # 8
+        #     "nueve",  # 9
+        # ]
+
 
         images = [
             mixed_input,
@@ -148,8 +161,8 @@ class CropBaseModel:
         ]
         row_labels = [
             "x_mix",
+            "source1_gt",
             "source2_gt",
-            "x_2",
             "x_filt_1",
             "x_filt_2",
             "x_deco_1",
@@ -187,7 +200,7 @@ class CropBaseModel:
                 img = img.numpy()
                 ax.imshow(img, cmap="gray")
 
-                # Etiquetas de fila a la izquierda
+                # Etiquetas de fila
                 if col == 0:
                     ax.set_ylabel(
                         row_labels[row],
@@ -196,20 +209,52 @@ class CropBaseModel:
                         rotation=0,
                     )
 
-                # ---- Mostrar clase debajo en filas 2–5 (row=1..4) ----
-                # Usamos labels_es[row] porque row==1 -> label índice 1 ('pantalón'), etc.
-                if 1 <= row <= 4:
-                    # proteger por si por alguna razón row > len(labels_es)-1 (no debería)
-                    class_name = labels_es[row] if row < len(labels_es) else "?"
+                # === Agregar textos sobre imágenes ===
+                text = None
+                color = "black"
+
+                if row == 1:  # source1_gt → etiqueta verdadera 1
+                    idx = np.argmax(source1_cond[col])
+                    text = f"{labels_es[idx]}"
+                    color = "blue"
+
+                elif row == 2:  # source2_gt → etiqueta verdadera 2
+                    idx = np.argmax(source2_cond[col])
+                    text = f"{labels_es[idx]}"
+                    color = "blue"
+
+                elif row == 3:  # reconstructed_source1 → predicción 1
+                    pred_idx = np.argmax(predictions_1[col])
+                    text = f"{labels_es[pred_idx]}"
+                    # Comprobar si acierta
+                    y1_idx = np.argmax(source1_cond[col])
+                    y2_idx = np.argmax(source2_cond[col])
+                    if pred_idx in [y1_idx, y2_idx]:
+                        color = "green"
+                    else:
+                        color = "red"
+
+                elif row == 4:  # reconstructed_source2 → predicción 2
+                    pred_idx = np.argmax(predictions_2[col])
+                    text = f"{labels_es[pred_idx]}"
+                    # Comprobar si acierta
+                    y1_idx = np.argmax(source1_cond[col])
+                    y2_idx = np.argmax(source2_cond[col])
+                    if pred_idx in [y1_idx, y2_idx]:
+                        color = "green"
+                    else:
+                        color = "red"
+
+                if text:
                     ax.text(
-                        0.5,        # centrado horizontalmente (coordenadas en axes)
-                        -0.12,      # posición un poco debajo de la imagen
-                        class_name,
-                        color="black",
-                        fontsize=8,
+                        0.5,
+                        -0.1,
+                        text,
                         ha="center",
                         va="top",
                         transform=ax.transAxes,
+                        color=color,
+                        fontsize=8,
                     )
 
         # ---- Título arriba con el nombre del modelo ----
@@ -230,7 +275,6 @@ class CropBaseModel:
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches="tight")
         plt.show()
-
 
     def unmix(
         self,
@@ -274,12 +318,6 @@ class CropBaseModel:
                 reconstructed_source2,
                 init_placeholder,
             )
-        print("---------------------------------")
-        print("predictions_1: ", predictions_1)
-        print("---------------------------------")
-        print("predictions_2: ", predictions_2)
-        print("---------------------------------")
-        
         (
             best_prediction_source1,
             y_predicted_s1_recon,
@@ -337,8 +375,6 @@ class CropBaseModel:
         source1_cond,
         source2_cond,
         iterations=3,
-        show_image=False,
-        save_path=None,
     ):
 
         average_image = self.alpha_mix * source1_gt.astype(np.float32) + (
@@ -397,13 +433,3 @@ class CropBaseModel:
             "acc_at_least_one_plot": acc_at_least_one_plot,
             "acc_both_plot": acc_both_plot,
         }
-
-    def reconstruct(self, input_image, intput_cond, output_cond=None, title=""):
-
-        _, _, z = self.cvae.encoder.predict([input_image, intput_cond], verbose=0)
-        reconstructed = self.cvae.decoder.predict(
-            [z, intput_cond if output_cond is None else output_cond], verbose=0
-        )
-        plt.imshow(reconstructed.reshape(28, 28), cmap="gray")
-        plt.title(title, fontsize=8)
-        return reconstructed
