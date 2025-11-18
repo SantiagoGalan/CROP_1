@@ -3,8 +3,8 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "../..")))
 from keras.models import load_model
-from custom_layers.Sampling import Sampling
-from custom_layers.ReshapeLayer import ReshapeLayer
+from custom_layers.sampling import Sampling
+from custom_layers.reshapeLayer import ReshapeLayer
 from data.get_data import get_mnist_data
 from models_definitions.cvae import CVAE
 
@@ -59,7 +59,7 @@ def all_models(
 
     sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "../..")))
     from keras.models import load_model
-    from custom_layers.Sampling import Sampling
+    from custom_layers.sampling import Sampling
     from models_definitions.cvae import CVAE
 
     # Obtener listas de archivos

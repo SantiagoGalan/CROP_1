@@ -1,4 +1,4 @@
-from custom_layers.ReshapeLayer import ReshapeLayer
+from project.custom_layers.reshapeLayer import ReshapeLayer
 import tensorflow as tf
 import numpy as np
 

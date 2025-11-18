@@ -1,6 +1,6 @@
 import tensorflow as tf
 from keras.layers import Concatenate, Flatten
-from custom_layers.Sampling import Sampling
+from custom_layers.sampling import Sampling
 
 
 # Function *******************************************************

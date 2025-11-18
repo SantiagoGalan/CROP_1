@@ -1,10 +1,8 @@
 import tensorflow as tf
 import numpy as np
-from custom_layers.Sampling import Sampling
-import inference.outcomes as out
+from project.custom_layers.sampling import Sampling 
+from project.inference.outcomes import outcomes
 import matplotlib.pyplot as plt
-import inference.metrics as met
-from abc import abstractmethod
 
 """
 x_mix_orig → mixed_input
@@ -42,10 +40,8 @@ x_best_predicted_1 → best_prediction_source1
 """
 
 
-class CropBaseModel:
-    def __init__(
-        self, cvae, predictor, data, bias=None, slope=None, gamma=None, **kwargs
-    ):
+class crop2:
+    def __init__(self, cvae, predictor, data, bias=None, slope=None, **kwargs):
         self.cvae = cvae
         self.predictor = predictor
         self.use_dataset = data
@@ -57,16 +53,20 @@ class CropBaseModel:
         self.alpha_1 = -2
         self.alpha_2 = -22
         self.alpha_mix = 0.5
+        self.gamma = 0.33
         self.name = cvae.name
-        self.gamma = 0.33 if gamma is None else gamma
 
     def best_filtered_var_sigmoid(self, x_mix_filter_2, mixed_input, alpha):
         # First decoded image --------------------------------------------------------------
-        x_mix_filter_1 = 2 * mixed_input - x_mix_filter_2
+        x_mix_filter_1 = (
+            2 * mixed_input - x_mix_filter_2
+        )  # Masked (Cochlear) source1_gt'2
         x_mix_filter_1 = tf.clip_by_value(
             x_mix_filter_1, clip_value_min=0, clip_value_max=1
         )
-        condition_encoder = self.predictor.predict(x_mix_filter_1, verbose=0)
+        condition_encoder = self.predictor.predict(
+            x_mix_filter_1, verbose=0
+        )  # * j * alfa     # con ponderado incremental
 
         condition_decoder_1 = condition_encoder
 
@@ -76,29 +76,18 @@ class CropBaseModel:
 
         zz_log_var = encoded_imgs[1] + alpha
 
-        z = Sampling()((encoded_imgs[0], zz_log_var))
+        z = Sampling()((encoded_imgs[0], zz_log_var))  # (z_mean, z_log_var)
 
         mask_source1 = self.cvae.decoder.predict([z, condition_decoder_1], verbose=0)
         mask_source1 = (mask_source1 - self.bias) * self.slope
         mask_source1 = tf.sigmoid(mask_source1)
 
-        x_mix_filter_1 = 2 * mixed_input * mask_source1
+        x_mix_filter_1 = 2 * mixed_input * mask_source1  # Masked (Cochlear)
         x_mix_filter_1 = tf.clip_by_value(
             x_mix_filter_1, clip_value_min=0, clip_value_max=1
         )
 
         return (x_mix_filter_1, mask_source1, condition_encoder)
-
-    @abstractmethod
-    def decoded_funtion(
-        mixed_input,
-        mask_source1,
-        mask_source2,
-        reconstructed_source1,
-        reconstructed_source2,
-        init_placeholder,
-    ):
-        pass
 
     def graphics(
         self,
@@ -111,29 +100,13 @@ class CropBaseModel:
         reconstructed_source2,
         mask_source1,
         mask_source2,
-        predictions_1,
-        predictions_2,
         init_placeholder,
         best_prediction_source1,
         bpsnr=None,
         acc_at_least_one=None,
         acc_both=None,
         save_path=None,
-        class_labels=None,
     ):
-        # Labels en español (Fashion-MNIST)
-        labels_es = [
-            "remera",  # 0
-            "pantalón",  # 1
-            "suéter",  # 2
-            "vestido",  # 3
-            "campera",  # 4
-            "sandalia",  # 5
-            "camisa",  # 6
-            "zapatilla",  # 7
-            "bolso",  # 8
-            "bota",  # 9
-        ]
 
         images = [
             mixed_input,
@@ -148,8 +121,8 @@ class CropBaseModel:
         ]
         row_labels = [
             "x_mix",
-            "source1_gt",
             "source2_gt",
+            "x_2",
             "x_filt_1",
             "x_filt_2",
             "x_deco_1",
@@ -162,6 +135,7 @@ class CropBaseModel:
         num_cols = images[0].shape[0] if len(images[0].shape) > 1 else 1
         img_size = 28
 
+        # Figsize proporcional al número de imágenes
         fig_width = num_cols * 1
         fig_height = num_rows * 1
         fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
@@ -187,62 +161,24 @@ class CropBaseModel:
                 img = img.numpy()
                 ax.imshow(img, cmap="gray")
 
-                # Etiquetas de fila
-                if col == 0:
+                if col == 0:  # solo en la primera columna
                     ax.set_ylabel(
                         row_labels[row],
                         labelpad=40,
                         va="center",
                         rotation=0,
                     )
-
-                # === Agregar textos sobre imágenes ===
-                text = None
-                color = "black"
-
-                if row == 1:  # source1_gt → etiqueta verdadera 1
-                    idx = np.argmax(source1_cond[col])
-                    text = f"{labels_es[idx]}"
-                    color = "blue"
-
-                elif row == 2:  # source2_gt → etiqueta verdadera 2
-                    idx = np.argmax(source2_cond[col])
-                    text = f"{labels_es[idx]}"
-                    color = "blue"
-
-                elif row == 3:  # reconstructed_source1 → predicción 1
-                    pred_idx = np.argmax(predictions_1[col])
-                    text = f"{labels_es[pred_idx]}"
-                    # Comprobar si acierta
-                    y1_idx = np.argmax(source1_cond[col])
-                    y2_idx = np.argmax(source2_cond[col])
-                    if pred_idx in [y1_idx, y2_idx]:
-                        color = "green"
-                    else:
-                        color = "red"
-
-                elif row == 4:  # reconstructed_source2 → predicción 2
-                    pred_idx = np.argmax(predictions_2[col])
-                    text = f"{labels_es[pred_idx]}"
-                    # Comprobar si acierta
-                    y1_idx = np.argmax(source1_cond[col])
-                    y2_idx = np.argmax(source2_cond[col])
-                    if pred_idx in [y1_idx, y2_idx]:
-                        color = "green"
-                    else:
-                        color = "red"
-
-                if text:
-                    ax.text(
-                        0.5,
-                        -0.1,
-                        text,
-                        ha="center",
-                        va="top",
-                        transform=ax.transAxes,
-                        color=color,
-                        fontsize=8,
-                    )
+        # for row, label in enumerate(row_labels):
+        #     fig.text(
+        #         0.02,  # posición source1_gt relativa
+        #         1 - (row + 0.5) / num_rows,  # posición source1_cond relativa
+        #         1 - (row + 0.5) / num_rows,
+        #         label,
+        #         va="center",
+        #         ha="right",
+        #         fontsize=img_size * 0.4,  # escala con la imagen
+        #         rotation=90,
+        #     )
 
         # ---- Título arriba con el nombre del modelo ----
         fig.suptitle(self.name, color="darkred")
@@ -257,7 +193,6 @@ class CropBaseModel:
             ha="center",
             color="darkblue",
         )
-
         plt.tight_layout()
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches="tight")
@@ -272,6 +207,7 @@ class CropBaseModel:
         iterations=3,
         show_image=False,
         save_path=None,
+        gamma=0.33
     ):
 
         average_image = self.alpha_mix * source1_gt.astype(np.float32) + (
@@ -279,6 +215,7 @@ class CropBaseModel:
         ) * source2_gt.astype(np.float32)
         x_mix = average_image
 
+        ## Initialization
         # inicialmente todas las variables son el input.
         mixed_input = x_mix
         mask_source1 = x_mix
@@ -287,24 +224,44 @@ class CropBaseModel:
         reconstructed_source2 = x_mix
         init_placeholder = tf.zeros_like(x_mix)
 
-        # condition_encoder = tf.zeros_like(source1_cond)
-
         for j in range(iterations):
-            (
-                mask_source1,
-                mask_source2,
-                reconstructed_source1,
-                reconstructed_source2,
-                predictions_1,
-                predictions_2,
-            ) = self.decoded_funtion(
-                mixed_input,
-                mask_source1,
-                mask_source2,
-                reconstructed_source1,
-                reconstructed_source2,
-                init_placeholder,
+
+            reconstructed_source1, mask_source1, predictions_1 = (
+                self.best_filtered_var_sigmoid(
+                    reconstructed_source2, mixed_input, self.alpha_2
+                )
             )
+
+            self.alpha_2 = self.alpha_2 * self.beta
+
+            #
+            x__x = (reconstructed_source1 + reconstructed_source2) / 2
+
+            x__x_e = x__x - mixed_input
+
+            reconstructed_source1 = reconstructed_source1 - (x__x_e * gamma)
+
+            reconstructed_source1 = tf.clip_by_value(
+                reconstructed_source1, clip_value_min=0, clip_value_max=1
+            )
+
+            reconstructed_source2, mask_source2, predictions_2 = (
+                self.best_filtered_var_sigmoid(
+                    reconstructed_source1, mixed_input, self.alpha_1
+                )
+            )
+
+            self.alpha_1 = self.alpha_1 * self.beta
+
+            x__x = (reconstructed_source1 + reconstructed_source2) / 2
+            x__x_e = x__x - mixed_input
+
+            reconstructed_source2 = reconstructed_source2 - (x__x_e * gamma)
+
+            reconstructed_source2 = tf.clip_by_value(
+                reconstructed_source2, clip_value_min=0, clip_value_max=1
+            )
+
         (
             best_prediction_source1,
             y_predicted_s1_recon,
@@ -313,7 +270,7 @@ class CropBaseModel:
             bpsnr_d,
             acc_at_least_one,
             acc_both,
-        ) = out.outcomes(
+        ) = outcomes(
             mask_source1,
             mask_source2,
             reconstructed_source1,
@@ -337,8 +294,6 @@ class CropBaseModel:
                 reconstructed_source2,
                 mask_source1,
                 mask_source2,
-                predictions_1,
-                predictions_2,
                 init_placeholder,
                 best_prediction_source1,
                 bpsnr=bpsnr[0],  # mean value
@@ -346,6 +301,7 @@ class CropBaseModel:
                 acc_both=acc_both,
                 save_path=save_path,
             )
+
         return {
             "bpsnr": bpsnr,
             "bpsnr_d": bpsnr_d,
@@ -355,68 +311,12 @@ class CropBaseModel:
             "acc_both": acc_both,
         }
 
-    def get_curve(
-        self,
-        source1_gt,
-        source2_gt,
-        source1_cond,
-        source2_cond,
-        iterations=3,
-    ):
+    def reconstruct(self, input_image, intput_cond, output_cond=None, title=""):
 
-        average_image = self.alpha_mix * source1_gt.astype(np.float32) + (
-            1 - self.alpha_mix
-        ) * source2_gt.astype(np.float32)
-        x_mix = average_image
-
-        # inicialmente todas las variables son el input.
-        mixed_input = x_mix
-        mask_source1 = x_mix
-        mask_source2 = x_mix
-        reconstructed_source1 = x_mix
-        reconstructed_source2 = x_mix
-        init_placeholder = tf.zeros_like(x_mix)
-
-        # condition_encoder = tf.zeros_like(source1_cond)
-
-        acc_at_least_one_plot = []
-        acc_both_plot = []
-
-        for j in range(iterations):
-            (
-                mask_source1,
-                mask_source2,
-                reconstructed_source1,
-                reconstructed_source2,
-                predictions_1,
-                predictions_2,
-            ) = self.decoded_funtion(
-                mixed_input,
-                mask_source1,
-                mask_source2,
-                reconstructed_source1,
-                reconstructed_source2,
-                init_placeholder,
-            )
-
-            y_predicted_s1_recon = self.predictor.predict(
-                reconstructed_source1, verbose=0
-            )
-            y_predicted_s2_recon = self.predictor.predict(
-                reconstructed_source2, verbose=0
-            )
-
-            acc_at_least_one, acc_both = met.accuracys(
-                p1=y_predicted_s1_recon,
-                p2=y_predicted_s2_recon,
-                y1=source1_cond,
-                y2=source2_cond,
-            )
-
-            acc_at_least_one_plot.append(acc_at_least_one)
-            acc_both_plot.append(acc_both)
-
-        return {
-            "acc_at_least_one_plot": acc_at_least_one_plot,
-            "acc_both_plot": acc_both_plot,
-        }
+        _, _, z = self.cvae.encoder.predict([input_image, intput_cond], verbose=0)
+        reconstructed = self.cvae.decoder.predict(
+            [z, intput_cond if output_cond is None else output_cond], verbose=0
+        )
+        plt.imshow(reconstructed.reshape(28, 28), cmap="gray")
+        plt.title(title, fontsize=8)
+        return reconstructed

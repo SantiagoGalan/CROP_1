@@ -1,6 +1,6 @@
 from keras.layers import Input, Concatenate, Dense, Flatten
 from keras.models import Model
-from custom_layers.Sampling import Sampling
+from custom_layers.sampling import Sampling
 
 
 def build_enconder(img_dim=(28,28),condition_dim=(10,),intermediate_dim=128,latent_dim=2):

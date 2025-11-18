@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
-from custom_layers.Sampling import Sampling
-from inference.outcomes import outcomes
+from custom_layers.sampling import Sampling
+import inference.outcomes as out
 import matplotlib.pyplot as plt
 
 
@@ -40,8 +40,7 @@ x_best_predicted_1 → best_prediction_source1
 (final refined reconstruction of source 1 after evaluation)
 """
 
-
-class crop2:
+class crop:
     def __init__(self, cvae, predictor, data, bias=None, slope=None, **kwargs):
         self.cvae = cvae
         self.predictor = predictor
@@ -54,8 +53,8 @@ class crop2:
         self.alpha_1 = -2
         self.alpha_2 = -22
         self.alpha_mix = 0.5
-        self.gamma = 0.33
         self.name = cvae.name
+        self.gamma = 0.33
 
     def best_filtered_var_sigmoid(self, x_mix_filter_2, mixed_input, alpha):
         # First decoded image --------------------------------------------------------------
@@ -80,7 +79,7 @@ class crop2:
         z = Sampling()((encoded_imgs[0], zz_log_var))  # (z_mean, z_log_var)
 
         mask_source1 = self.cvae.decoder.predict([z, condition_decoder_1], verbose=0)
-        mask_source1 = (mask_source1 - self.bias) * self.slope
+        mask_source1 = ( mask_source1 - self.bias ) * self.slope 
         mask_source1 = tf.sigmoid(mask_source1)
 
         x_mix_filter_1 = 2 * mixed_input * mask_source1  # Masked (Cochlear)
@@ -161,7 +160,7 @@ class crop2:
                     img = tf.reshape(img, (img_size, img_size))
                 img = img.numpy()
                 ax.imshow(img, cmap="gray")
-
+        
                 if col == 0:  # solo en la primera columna
                     ax.set_ylabel(
                         row_labels[row],
@@ -180,7 +179,7 @@ class crop2:
         #         fontsize=img_size * 0.4,  # escala con la imagen
         #         rotation=90,
         #     )
-
+        
         # ---- Título arriba con el nombre del modelo ----
         fig.suptitle(self.name, color="darkred")
 
@@ -208,7 +207,6 @@ class crop2:
         iterations=3,
         show_image=False,
         save_path=None,
-        gamma=0.33
     ):
 
         average_image = self.alpha_mix * source1_gt.astype(np.float32) + (
@@ -217,51 +215,43 @@ class crop2:
         x_mix = average_image
 
         ## Initialization
-        # inicialmente todas las variables son el input.
+        #inicialmente todas las variables son el input.
         mixed_input = x_mix
-        mask_source1 = x_mix
-        mask_source2 = x_mix
-        reconstructed_source1 = x_mix
-        reconstructed_source2 = x_mix
+        mask_source1 = ( x_mix )
+        mask_source2 = ( x_mix )
+        reconstructed_source1 = ( x_mix )
+        reconstructed_source2 = ( x_mix )
         init_placeholder = tf.zeros_like(x_mix)
+ 
+        # condition_encoder = tf.zeros_like(source1_cond)
 
         for j in range(iterations):
-
-            reconstructed_source1, mask_source1, predictions_1 = (
-                self.best_filtered_var_sigmoid(
-                    reconstructed_source2, mixed_input, self.alpha_2
-                )
+            # Estimación de la fuente 1
+            reconstructed_source1, mask_source1, predictions_1 = self.best_filtered_var_sigmoid(
+                reconstructed_source2, mixed_input, self.alpha_2
             )
+            self.alpha_2 *= self.beta
 
-            self.alpha_2 = self.alpha_2 * self.beta
+            eps = 1e-6
+            mask_sum = tf.maximum(mask_source1 + mask_source2, eps)
+            m1 = mask_source1 / mask_sum
+            m2 = mask_source2 / mask_sum
 
-            #
-            x__x = (reconstructed_source1 + reconstructed_source2) / 2
+            # Aplicar máscaras normalizadas para la próxima iteración
+            reconstructed_source1 = tf.clip_by_value(2.0 * mixed_input * m1, 0.0, 1.0)
 
-            x__x_e = x__x - mixed_input
-
-            reconstructed_source1 = reconstructed_source1 - (x__x_e * gamma)
-
-            reconstructed_source1 = tf.clip_by_value(
-                reconstructed_source1, clip_value_min=0, clip_value_max=1
+            # Estimación de la fuente 2
+            reconstructed_source2, mask_source2, predictions_2 = self.best_filtered_var_sigmoid(
+                reconstructed_source1, mixed_input, self.alpha_1
             )
+            self.alpha_1 *= self.beta
 
-            reconstructed_source2, mask_source2, predictions_2 = (
-                self.best_filtered_var_sigmoid(
-                    reconstructed_source1, mixed_input, self.alpha_1
-                )
-            )
+            eps = 1e-6
+            mask_sum = tf.maximum(mask_source1 + mask_source2, eps)
+            m1 = mask_source1 / mask_sum
+            m2 = mask_source2 / mask_sum
 
-            self.alpha_1 = self.alpha_1 * self.beta
-
-            x__x = (reconstructed_source1 + reconstructed_source2) / 2
-            x__x_e = x__x - mixed_input
-
-            reconstructed_source2 = reconstructed_source2 - (x__x_e * gamma)
-
-            reconstructed_source2 = tf.clip_by_value(
-                reconstructed_source2, clip_value_min=0, clip_value_max=1
-            )
+            reconstructed_source2 = tf.clip_by_value(2.0 * mixed_input * m2, 0.0, 1.0)
 
         (
             best_prediction_source1,
@@ -271,7 +261,7 @@ class crop2:
             bpsnr_d,
             acc_at_least_one,
             acc_both,
-        ) = outcomes(
+        ) = out.outcomes(
             mask_source1,
             mask_source2,
             reconstructed_source1,

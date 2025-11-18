@@ -1,6 +1,6 @@
 from keras.layers import Input, Dense, Conv2D, BatchNormalization, Dropout, Flatten
 from keras.models import Model
-from custom_layers.ReshapeLayer import ReshapeLayer
+from custom_layers.reshapeLayer import ReshapeLayer
 
 def build_predictor():
     image_size = 28
