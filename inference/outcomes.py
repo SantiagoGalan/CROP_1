@@ -4,6 +4,7 @@ import importlib
 
 importlib.reload(met)
 
+
 def outcomes(
     mask_source1,
     mask_source2,
@@ -52,9 +53,7 @@ def outcomes(
     x_best_MSE = (source1_gt * select_s1) + (source2_gt * select_s2)
 
     # Class-based selection (first predicted digit) -------------------------------
-    s_best_s1 = tf.cast(
-        tf.math.greater_equal(y_reduced_gt1, y_reduced_gt2), tf.int64
-    )
+    s_best_s1 = tf.cast(tf.math.greater_equal(y_reduced_gt1, y_reduced_gt2), tf.int64)
     s_1_best_s1 = tf.cast(tf.math.less(y_reduced_gt1, y_reduced_gt2), tf.int64)
 
     y_best_predicted_1 = s_best_s1 * y_reduced_gt1 + s_1_best_s1 * y_reduced_gt2
@@ -70,16 +69,15 @@ def outcomes(
     bpsnr = met.batched_psnr(
         source1_gt, source2_gt, reconstructed_source1, reconstructed_source2
     )
-    bpsnr_d = met.batched_psnr(
-        source1_gt, source2_gt, mask_source1, mask_source2
-    )
+    bpsnr_d = met.batched_psnr(source1_gt, source2_gt, mask_source1, mask_source2)
 
     # New accuracy metric --------------------------------------------------------
     acc_at_least_one, acc_both = met.accuracys(
+        gt1=source1_cond,
+        gt2=source2_cond,
         p1=y_predicted_s1_recon,
         p2=y_predicted_s2_recon,
-        y1=source1_cond,
-        y2=source2_cond,
+        
     )
 
     return (

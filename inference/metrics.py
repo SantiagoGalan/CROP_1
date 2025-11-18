@@ -120,22 +120,21 @@ def batched_psnr(gt1, gt2, gen1, gen2):
     return bpsnr_mean, bpsnr_std
 
 
-def accuracys(p1, p2, y1, y2):
+def accuracys(gt1, gt2, p1, p2):
+    gt1_max = np.argmax(gt1, axis=1)
+    gt2_max = np.argmax(gt2, axis=1)
     p1_max = np.argmax(p1, axis=1)
     p2_max = np.argmax(p2, axis=1)
-    y1_max = np.argmax(y1, axis=1)
-    y2_max = np.argmax(y2, axis=1)
 
     at_least_one = (
-        (p1_max == y1_max)
-        | (p1_max == y2_max)
-        | (p2_max == y1_max)
-        | (p2_max == y2_max)
+        (p1_max == gt1_max)
+        | (p1_max == gt2_max)
+        | (p2_max == gt1_max)
+        | (p2_max == gt2_max)
     ).astype(int)
 
     pred_pairs = np.sort(np.stack([p1_max, p2_max], axis=1), axis=1)
-    y_pairs = np.sort(np.stack([y1_max, y2_max], axis=1), axis=1)
-
+    y_pairs = np.sort(np.stack([gt1_max, gt2_max], axis=1), axis=1)
     both = np.all(pred_pairs == y_pairs, axis=1).astype(int)
 
     acc_at_least_one = np.count_nonzero(at_least_one) / len(at_least_one)

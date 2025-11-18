@@ -40,8 +40,6 @@ x_best_predicted_1 → best_prediction_source1
 (final refined reconstruction of source 1 after evaluation)
 """
 
-
-
 class crop:
     def __init__(self, cvae, predictor, data, bias=None, slope=None, **kwargs):
         self.cvae = cvae
@@ -227,7 +225,7 @@ class crop:
  
         # condition_encoder = tf.zeros_like(source1_cond)
 
-        for j in range(iterations):
+        for _ in range(iterations):
             # Estimación de la fuente 1
             reconstructed_source1, mask_source1, predictions_1 = self.best_filtered_var_sigmoid(
                 reconstructed_source2, mixed_input, self.alpha_2
