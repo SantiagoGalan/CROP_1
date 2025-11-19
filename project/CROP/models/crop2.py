@@ -40,7 +40,7 @@ x_best_predicted_1 → best_prediction_source1
 """
 
 
-class crop2:
+class Crop2:
     def __init__(self, cvae, predictor, data, bias=None, slope=None, **kwargs):
         self.cvae = cvae
         self.predictor = predictor
