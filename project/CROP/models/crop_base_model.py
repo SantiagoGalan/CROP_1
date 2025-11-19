@@ -1,11 +1,9 @@
 import tensorflow as tf
 import numpy as np
 from project.custom_layers.sampling import Sampling
-from project.CROP.utitls.graphics import Graphics
-import project.inference.outcomes as out
-import project.inference.metrics as met
-
-
+from CROP.utitls.graphics import Graphics
+import inference.outcomes as out
+import inference.metrics as met
 from abc import abstractmethod
 
 """
@@ -59,9 +57,9 @@ class CropBaseModel:
         self.name = cvae.name
 
     # hacer una funcion aparte como  decoded
-    def best_filtered_var_sigmoid(self, x_mix_filter_2, mixed_input, alpha):
+    # def best_filtered_var_sigmoid(self, x_mix_filter_2, mixed_input, alpha):
 
-    #def filter(self, x_mix_filter_2, mixed_input, alpha):
+    def filter(self, x_mix_filter_2, mixed_input, alpha):
         # First decoded image --------------------------------------------------------------
         x_mix_filter_1 = 2 * mixed_input - x_mix_filter_2
         x_mix_filter_1 = tf.clip_by_value(
@@ -180,7 +178,7 @@ class CropBaseModel:
                 init_placeholder,
                 best_prediction_source1,
                 bias=self.bias,
-                slope=self.bias,
+                slopes=self.bias,
                 title="",
                 bpsnr=bpsnr[0],  # mean value
                 acc_at_least_one=acc_at_least_one,
