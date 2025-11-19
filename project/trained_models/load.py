@@ -3,12 +3,12 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "../..")))
 from keras.models import load_model
-from custom_layers.sampling import Sampling
-from custom_layers.reshapeLayer import ReshapeLayer
-from data.get_data import get_mnist_data
-from models_definitions.cvae import CVAE
+from project.custom_layers.sampling import Sampling
+from project.custom_layers.reshapeLayer import ReshapeLayer
+from project.data.get_data import get_mnist_data
+from project.models_definitions.cvae import CVAE
 
-COMMON_PATH = "../../trained_models"
+COMMON_PATH = "../trained_models"
 
 
 def cvae(lat, inter, dataset):

@@ -1,6 +1,6 @@
-from CROP_models.crop_base_model import CropBaseModel
-#from  crop_base_model import CropBaseModel
 import tensorflow as tf
+from project.CROP.models.crop_base_model import CropBaseModel
+
 
 
 class Crop1(CropBaseModel):
