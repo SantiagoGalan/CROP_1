@@ -4,7 +4,7 @@ from project.custom_layers.sampling import Sampling
 from project.CROP.utitls.graphics import Graphics
 import project.inference.outcomes as out
 import project.inference.metrics as met
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
 """
 x_mix_orig → mixed_input
@@ -42,19 +42,21 @@ x_best_predicted_1 → best_prediction_source1
 """
 
 
-class CropBaseModel:
-    def __init__(self, cvae, predictor, bias=None, slope=None, gamma=None, **kwargs):
+class CropBaseModel(ABC):
+    def __init__(self, cvae, predictor, model_params=None, **kwargs):
         self.cvae = cvae
         self.predictor = predictor
-        self.bias = 0.22 if bias is None else bias
-        self.slope = 22 if slope is None else slope
-        self.beta = 1
-        self.alpha_1 = -2
-        self.alpha_2 = -22
-        self.alpha_mix = 0.5
-        self.gamma = 0.33 if gamma is None else gamma
+        default_params = {
+            "alpha_1": -2,
+            "alpha_2": -22,
+            "bias": 0.22,
+            "slope": 22,
+            "gamma": 0.33,
+            "alpha_mix": 0.5,
+            "beta": 1,
+        }
 
-        self.name = cvae.name
+        self.model_params = {**default_params, **(model_params or {})}
 
     # hacer una funcion aparte como  decoded
     def best_filtered_var_sigmoid(self, x_mix_filter_2, mixed_input, alpha):
@@ -64,20 +66,24 @@ class CropBaseModel:
         x_mix_filter_1 = tf.clip_by_value(
             x_mix_filter_1, clip_value_min=0, clip_value_max=1
         )
-        condition_encoder = self.predictor.predict(x_mix_filter_1, verbose=0)
+        condition_encoder = self.predictor(x_mix_filter_1, verbose=0, training=False)
 
         condition_decoder_1 = condition_encoder
 
-        encoded_imgs = self.cvae.encoder.predict(
-            [x_mix_filter_1, condition_encoder], verbose=0
+        encoded_imgs = self.cvae.encoder(
+            [x_mix_filter_1, condition_encoder], verbose=0, training=0
         )
 
         zz_log_var = encoded_imgs[1] + alpha
 
         z = Sampling()((encoded_imgs[0], zz_log_var))
 
-        mask_source1 = self.cvae.decoder.predict([z, condition_decoder_1], verbose=0)
-        mask_source1 = (mask_source1 - self.bias) * self.slope
+        mask_source1 = self.cvae.decoder(
+            [z, condition_decoder_1], verbose=0, Training=False
+        )
+        mask_source1 = (mask_source1 - self.model_params["bias"]) * self.model_params[
+            "slope"
+        ]
         mask_source1 = tf.sigmoid(mask_source1)
 
         x_mix_filter_1 = 2 * mixed_input * mask_source1
@@ -88,13 +94,14 @@ class CropBaseModel:
         return (x_mix_filter_1, mask_source1, condition_encoder)
 
     @abstractmethod
-    def decoded_funtion(
+    def decoded_function(
+        self,
         mixed_input,
         mask_source1,
         mask_source2,
         reconstructed_source1,
         reconstructed_source2,
-        init_placeholder,
+        params,
     ):
         pass
 
@@ -107,22 +114,21 @@ class CropBaseModel:
         iterations=3,
         show_image=False,
         save_path=None,
+        params=None,
     ):
+        # combinar defaults con parámetros recibidos
+        params = {**self.model_params, **(params or {})}
 
-        average_image = self.alpha_mix * source1_gt.astype(np.float32) + (
-            1 - self.alpha_mix
+        # usar params["alpha_mix"] como antes
+        average_image = params["alpha_mix"] * source1_gt.astype(np.float32) + (
+            1 - params["alpha_mix"]
         ) * source2_gt.astype(np.float32)
-        x_mix = average_image
 
-        # inicialmente todas las variables son el input.
-        mixed_input = x_mix
-        mask_source1 = x_mix
-        mask_source2 = x_mix
-        reconstructed_source1 = x_mix
-        reconstructed_source2 = x_mix
-        init_placeholder = tf.zeros_like(x_mix)
-
-        # condition_encoder = tf.zeros_like(source1_cond)
+        mixed_input = average_image
+        mask_source1 = mixed_input
+        mask_source2 = mixed_input
+        reconstructed_source1 = mixed_input
+        reconstructed_source2 = mixed_input
 
         for j in range(iterations):
             (
@@ -132,13 +138,13 @@ class CropBaseModel:
                 reconstructed_source2,
                 predictions_1,
                 predictions_2,
-            ) = self.decoded_funtion(
+            ) = self.decoded_function(
                 mixed_input,
                 mask_source1,
                 mask_source2,
                 reconstructed_source1,
                 reconstructed_source2,
-                init_placeholder,
+                params,  # ← pasa parámetros dinámicos
             )
         (
             best_prediction_source1,
@@ -174,16 +180,16 @@ class CropBaseModel:
                 mask_source2,
                 predictions_1,
                 predictions_2,
-                init_placeholder,
                 best_prediction_source1,
-                bias=self.bias,
-                slope=self.slope,
+                bias=self.model_params["bias"],
+                slope=self.model_params["slope"],
                 title="",
                 bpsnr=bpsnr[0],  # mean value
                 acc_at_least_one=acc_at_least_one,
                 acc_both=acc_both,
                 save_path=save_path,
             )
+
         return {
             "bpsnr": bpsnr,
             "bpsnr_d": bpsnr_d,
@@ -213,7 +219,6 @@ class CropBaseModel:
         mask_source2 = x_mix
         reconstructed_source1 = x_mix
         reconstructed_source2 = x_mix
-        init_placeholder = tf.zeros_like(x_mix)
 
         # condition_encoder = tf.zeros_like(source1_cond)
 
@@ -234,14 +239,13 @@ class CropBaseModel:
                 mask_source2,
                 reconstructed_source1,
                 reconstructed_source2,
-                init_placeholder,
             )
 
-            y_predicted_s1_recon = self.predictor.predict(
-                reconstructed_source1, verbose=0
+            y_predicted_s1_recon = self.predictor(
+                reconstructed_source1, training=False, verbose=0
             )
-            y_predicted_s2_recon = self.predictor.predict(
-                reconstructed_source2, verbose=0
+            y_predicted_s2_recon = self.predictor(
+                reconstructed_source2, training=False, verbose=0
             )
 
             acc_at_least_one, acc_both = met.accuracys(
