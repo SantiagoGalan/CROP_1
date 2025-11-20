@@ -18,7 +18,6 @@ class Graphics:
         mask_source2,
         predictions_1,
         predictions_2,
-        init_placeholder,
         best_prediction_source1,
         bias,
         slope,
@@ -38,7 +37,6 @@ class Graphics:
             reconstructed_source2,
             mask_source1,
             mask_source2,
-            init_placeholder,
             best_prediction_source1,
         ]
 
@@ -50,7 +48,6 @@ class Graphics:
             "x_filt_2",
             "x_deco_1",
             "x_deco_2",
-            "init_placeholder",
             "x_best_pred",
         ]
 

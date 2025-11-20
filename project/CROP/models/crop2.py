@@ -310,13 +310,3 @@ class Crop2:
             "acc_at_least_one": acc_at_least_one,
             "acc_both": acc_both,
         }
-
-    def reconstruct(self, input_image, intput_cond, output_cond=None, title=""):
-
-        _, _, z = self.cvae.encoder.predict([input_image, intput_cond], verbose=0)
-        reconstructed = self.cvae.decoder.predict(
-            [z, intput_cond if output_cond is None else output_cond], verbose=0
-        )
-        plt.imshow(reconstructed.reshape(28, 28), cmap="gray")
-        plt.title(title, fontsize=8)
-        return reconstructed
