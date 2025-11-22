@@ -59,42 +59,16 @@ class CropBaseModel(ABC):
         self.model_params = {**default_params, **(model_params or {})}
 
     # hacer una funcion aparte como  decoded
-    def best_filtered_var_sigmoid(self, x_mix_filter_2, mixed_input, alpha):
-        # def filter(self, x_mix_filter_2, mixed_input, alpha):
-        # First decoded image --------------------------------------------------------------
-        x_mix_filter_1 = 2 * mixed_input - x_mix_filter_2
-        x_mix_filter_1 = tf.clip_by_value(
-            x_mix_filter_1, clip_value_min=0, clip_value_max=1
-        )
-        condition_encoder = self.predictor(x_mix_filter_1, verbose=0, training=False)
-
-        condition_decoder_1 = condition_encoder
-
-        encoded_imgs = self.cvae.encoder(
-            [x_mix_filter_1, condition_encoder], verbose=0, training=0
-        )
-
-        zz_log_var = encoded_imgs[1] + alpha
-
-        z = Sampling()((encoded_imgs[0], zz_log_var))
-
-        mask_source1 = self.cvae.decoder(
-            [z, condition_decoder_1], verbose=0, Training=False
-        )
-        mask_source1 = (mask_source1 - self.model_params["bias"]) * self.model_params[
-            "slope"
-        ]
-        mask_source1 = tf.sigmoid(mask_source1)
-
-        x_mix_filter_1 = 2 * mixed_input * mask_source1
-        x_mix_filter_1 = tf.clip_by_value(
-            x_mix_filter_1, clip_value_min=0, clip_value_max=1
-        )
-
-        return (x_mix_filter_1, mask_source1, condition_encoder)
+    @abstractmethod
+    def filter(self, filter_1, mixed_input, params):
+        """
+        filter_1: cambiar nombre. estimacion de alguan fuente 
+        mixed_innput: input orginal
+        """
+        pass
 
     @abstractmethod
-    def decoded_function(
+    def decode(
         self,
         mixed_input,
         mask_source1,
@@ -138,7 +112,7 @@ class CropBaseModel(ABC):
                 reconstructed_source2,
                 predictions_1,
                 predictions_2,
-            ) = self.decoded_function(
+            ) = self.decode(
                 mixed_input,
                 mask_source1,
                 mask_source2,
