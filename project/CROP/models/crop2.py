@@ -44,15 +44,13 @@ class Crop2(CropBaseModel):
     def decode(
         self,
         mixed_input,
-        mask_source1,
-        mask_source2,
         reconstructed_source1,
         reconstructed_source2,
         params,
 
     ):
         alpha_1 = params["alpha_1"]
-        alpha_2 = params["alpha_1"]
+        alpha_2 = params["alpha_2"]
         beta = params["beta"]
         bias = params["bias"]
         slope = params["slope"]
@@ -64,7 +62,7 @@ class Crop2(CropBaseModel):
             )
         )
 
-        alpha_2 = alpha_2 * beta
+        self.model_params["alpha_2"] = alpha_2 * beta
 
         x__x = (reconstructed_source1 + reconstructed_source2) / 2
 
@@ -82,7 +80,7 @@ class Crop2(CropBaseModel):
             )
         )
 
-        alpha_1 = alpha_1 * beta
+        self.model_params["alpha_1"] = alpha_1 * beta
 
         x__x = (reconstructed_source1 + reconstructed_source2) / 2
         x__x_e = x__x - mixed_input

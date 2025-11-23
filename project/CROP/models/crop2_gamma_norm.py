@@ -39,8 +39,6 @@ class Crop2GammaNorm(CropBaseModel):
     def decode(
         self,
         mixed_input,
-        mask_source1,
-        mask_source2,
         reconstructed_source1,
         reconstructed_source2,
         params

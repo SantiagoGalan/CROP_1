@@ -41,6 +41,11 @@ x_best_predicted_1 → best_prediction_source1
 
 
 class CropBaseModel(ABC):
+    """
+    Esto es una clase abstracta. Para crear un modelo nuevo hay que crear una clase nueva que hereder de esta
+    y definir las funciones filter y decode.
+    
+    """
     def __init__(self, cvae, predictor, model_params=None, **kwargs):
         self.cvae = cvae
         self.predictor = predictor
@@ -57,25 +62,50 @@ class CropBaseModel(ABC):
         self.model_params = {**default_params, **(model_params or {})}
         self.graphicator = Graphics
 
-    # hacer una funcion aparte como  decoded
     @abstractmethod
-    def filter(self, filter_1, mixed_input, params):
+    def filter(self,mixed_input, filter_1):
+        
         """
-        filter_1: cambiar nombre. estimacion de alguan fuente 
-        mixed_innput: input orginal
+        Input:mixed_input, filter_1, params
+
+        filter_1: Cambiar nombre. estimación de alguna fuente 
+        mixed_input: Input original
+
+        Return: x_mix_filter_1, mask_source1, condition_encoder
+
+        x_mix_filter_1: Nuevo estimación de la fuente que no se usa de input. Tiene que tener las mismas dimensiones que filer_1
+        mask_source1: Mascara de la fuente nueva. Tiene que tener las mismas dimensiones que filer_1
+        condition_encoder: Predicción de la clase de la fuente que se estimó. Las dimensiones [n_imagenes,n_clases]
         """
+
         pass
 
     @abstractmethod
     def decode(
         self,
         mixed_input,
-        mask_source1,
-        mask_source2,
         reconstructed_source1,
         reconstructed_source2,
         params,
     ):
+        """
+        Input:
+        mixed_input: Mezcla original.
+        reconstructed_source1: Estimación de la fuente 1. 
+        reconstructed_source2: Estimación de la fuente 2.
+        params: Parámetros opcionales para la decodificación. 
+
+        Return:
+
+        mask_source1: Actualización Máscara 1. Dim: Igual que las mezclas
+        mask_source2: Actualización Máscara 2. Dim: Igual que las mezclas
+        reconstructed_source1: Actualización de la reconstrucción de la fuente 1 Dim: Igual que las mezclas
+        reconstructed_source2: Actualización de la reconstrucción de la fuente 2 Dim: Igual que las mezclas
+        predictions_1: Predicción de la clase 1. [n_imagenes, n_clases]
+        predictions_2: Predicción de la clase 2. [n_imagenes, n_clases]
+        
+
+        """
         pass
 
     def mix(self,source1_gt,source2_gt,params):
@@ -119,8 +149,6 @@ class CropBaseModel(ABC):
                 predictions_2,
             ) = self.decode(
                 mixed_input,
-                mask_source1,
-                mask_source2,
                 reconstructed_source1,
                 reconstructed_source2,
                 params,
@@ -203,8 +231,6 @@ class CropBaseModel(ABC):
                 predictions_2,
             ) = self.decode(
                 mixed_input,
-                mask_source1,
-                mask_source2,
                 reconstructed_source1,
                 reconstructed_source2,
                 params

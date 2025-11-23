@@ -39,22 +39,20 @@ class Crop2Norm(CropBaseModel):
             x_mix_filter_1, clip_value_min=0, clip_value_max=1
         )
 
-        return (x_mix_filter_1, mask_source1, condition_encoder)
+        return x_mix_filter_1, mask_source1, condition_encoder
 
 
 
     def decode(
         self,
         mixed_input,
-        mask_source1,
-        mask_source2,
         reconstructed_source1,
         reconstructed_source2,
         params
     ):
         
         alpha_1 = params["alpha_1"]
-        alpha_2 = params["alpha_1"]
+        alpha_2 = params["alpha_2"]
         beta = params["beta"]
         bias = params["bias"]
         slope = params["slope"]
@@ -66,7 +64,7 @@ class Crop2Norm(CropBaseModel):
                 reconstructed_source2, mixed_input, alpha_2,bias, slope
             )
         )
-        alpha_2 *= beta
+        self.model_params["alpha_2"] = alpha_2 * beta
 
 
         # Estimación de la fuente 2
@@ -77,7 +75,7 @@ class Crop2Norm(CropBaseModel):
 
             )
         )
-        alpha_1 *= beta
+        self.model_params["alpha_1"] = alpha_1 * beta
 
         eps = 1e-6
         mask_sum = tf.maximum(mask_source1 + mask_source2, eps)
