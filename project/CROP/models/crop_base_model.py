@@ -1,7 +1,11 @@
+from tkinter import N
 import numpy as np
 from project.CROP.utitls.graphics import Graphics
+from project.CROP.utitls.metrics import Metrics
+
 import project.inference.outcomes as out
 import project.inference.metrics as met
+
 from abc import abstractmethod, ABC
 
 """
@@ -47,8 +51,11 @@ class CropBaseModel(ABC):
     
     """
     def __init__(self, cvae, predictor, model_params=None, **kwargs):
+        #auto enconder
         self.cvae = cvae
+        #predictor
         self.predictor = predictor
+        #parametos por defecto
         default_params = {
             "alpha_1": -2,
             "alpha_2": -22,
@@ -60,7 +67,21 @@ class CropBaseModel(ABC):
         }
 
         self.model_params = {**default_params, **(model_params or {})}
+        #modulos de calculos/graficos
         self.graphicator = Graphics
+        self.metrics_cal = Metrics
+        #datos de la úlitma pasada
+        self.mix_input=None
+        self.mask1=None
+        self.mask2=None
+        self.source1_estimation=None
+        self.source2_estimation=None
+        self.predictions1=None
+        self.predictions2=None
+        ##metricas
+        self.metrics={}
+        
+        
 
     @abstractmethod
     def filter(self,mixed_input, filter_1):
@@ -81,13 +102,7 @@ class CropBaseModel(ABC):
         pass
 
     @abstractmethod
-    def decode(
-        self,
-        mixed_input,
-        reconstructed_source1,
-        reconstructed_source2,
-        params,
-    ):
+    def decode(self):
         """
         Input:
         mixed_input: Mezcla original.
@@ -108,26 +123,27 @@ class CropBaseModel(ABC):
         """
         pass
 
-    def mix(self,source1_gt,source2_gt,params):
+    def mix(self,source1_gt,source2_gt,mix_params):
         
-        average_image = params["alpha_mix"] * source1_gt.astype(np.float32) + (
-            1 - params["alpha_mix"]
+        average_image = mix_params["alpha_mix"] * source1_gt.astype(np.float32) + (
+            1 - mix_params["alpha_mix"]
         ) * source2_gt.astype(np.float32)
         
-        mixed_input = average_image
-        mask_source1 = mixed_input
-        mask_source2 = mixed_input
-        reconstructed_source1 = mixed_input
-        reconstructed_source2 = mixed_input
-        return mixed_input, mask_source1, mask_source2, reconstructed_source1, reconstructed_source2
+        self.mixed_input = average_image
+        self.mask1 = average_image
+        self.mask2 = average_image
+        self.source1_estimation = average_image
+        self.source2_estimation = average_image
+
+        return average_image
 
 
     def unmix(
         self,
         source1_gt,
         source2_gt,
-        source1_cond,
-        source2_cond,
+        source1_labels,
+        source2_labels,
         iterations=3,
         show_image=False,
         save_path=None,
@@ -135,69 +151,80 @@ class CropBaseModel(ABC):
     ):
                 
         # combinar defaults con parámetros recibidos
-        params = {**self.model_params, **(params or {})}
+        self.model_params = {**self.model_params, **(params or {})}
 
-        mixed_input, mask_source1, mask_source2, reconstructed_source1, reconstructed_source2 = self.mix(source1_gt,source2_gt,params)
+        self.mix(source1_gt,source2_gt,self.model_params)
 
         for _ in range(iterations):
-            (
-                mask_source1,
-                mask_source2,
-                reconstructed_source1,
-                reconstructed_source2,
-                predictions_1,
-                predictions_2,
-            ) = self.decode(
-                mixed_input,
-                reconstructed_source1,
-                reconstructed_source2,
-                params,
-            )
-        (
-            best_prediction_source1,
-            y_predicted_s1_recon,
-            y_predicted_s2_recon,
-            bpsnr,
-            bpsnr_d,
-            acc_at_least_one,
-            acc_both,
-        ) = out.outcomes(
-            mask_source1,
-            mask_source2,
-            reconstructed_source1,
-            reconstructed_source2,
-            mixed_input,
-            source1_gt,
-            source2_gt,
-            source1_cond,
-            source2_cond,
-            self.predictor,
-        )
+            
+             self.decode()
+            # get_all_metrics():
+            #quality metrics
+
+
+        bpsnr_mean_estimation, bpsnr_std_estimation = self.metrics_cal.batched_psnr(gt1=source1_gt,
+                                                              gt2=source2_gt,
+                                                              gen1=self.source1_estimation,
+                                                              gen2=self.source2_estimation)
+        
+        bpsnr_mean_mask, bpsnr_std_mask = self.metrics_cal.batched_psnr(gt1=source1_gt,
+                                                              gt2=source2_gt,
+                                                              gen1=self.mask1,
+                                                              gen2=self.mask2)
+
+       #no anda??
+        acc_at_least_one, acc_both = self.metrics_cal.accuracys(gt1=source1_gt, 
+                                                                gt2=source2_gt,
+                                                                p1=self.predictions1,
+                                                                p2=self.predictions2)
+        
+        best_prediction_source1 = self.metrics_cal.best_predicctions(source1_gt,source2_gt,source1_labels,
+    source2_labels)
+        # (
+        #     best_prediction_source1,
+        #     y_predicted_s1_recon,
+        #     y_predicted_s2_recon,
+        #     bpsnr,
+        #     bpsnr_d,
+        #     acc_at_least_one,
+        #     acc_both,
+        # ) = out.outcomes(
+        #     self.mask1,
+        #     self.mask2,
+        #     self.source1_estimation,
+        #     self.source2_estimation,
+        #     self.mixed_input,
+        #     source1_gt,
+        #     source2_gt,
+        #     source1_labels,
+        #     source2_labels,
+        #     self.predictor,
+        # )
 
         if show_image:
             self.graphicator.complete_plot(
-                mixed_input,
+                self.mixed_input,
                 source1_gt,
                 source2_gt,
-                reconstructed_source1,
-                reconstructed_source2,
-                mask_source1,
-                mask_source2,
+                self.source1_estimation,
+                self.source2_estimation,
+                self.mask1,
+                self.mask2,
                 best_prediction_source1,
                 bias=self.model_params["bias"],
                 slope=self.model_params["slope"],
                 title="",
-                bpsnr=bpsnr[0],  # mean value
+                bpsnr=bpsnr_mean_estimation,  # mean value
                 acc_at_least_one=acc_at_least_one,
                 acc_both=acc_both,
                 save_path=save_path,
             )
 
-        return {
-            "bpsnr": bpsnr,
-            "bpsnr_d": bpsnr_d,
-            "predictions_1": predictions_1,
-            "predictions_2": predictions_2,
+        return { # devolver 2 dicionarios, uno de metricas y otro de "imagenes"
+            "bpsnr": bpsnr_mean_estimation,
+            "bpsnr_d": bpsnr_mean_mask,
+            "predictions_1": self.predictions1,
+            "predictions_2": self.predictions2,
             "acc_at_least_one": acc_at_least_one,
             "acc_both": acc_both,
         }
