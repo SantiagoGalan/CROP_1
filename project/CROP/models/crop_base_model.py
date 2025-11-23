@@ -172,34 +172,18 @@ class CropBaseModel(ABC):
                                                               gen1=self.mask1,
                                                               gen2=self.mask2)
 
-       #no anda??
-        acc_at_least_one, acc_both = self.metrics_cal.accuracys(gt1=source1_gt, 
-                                                                gt2=source2_gt,
+        print("gt1:", self.predictions1)
+        print("gt2:", self.predictions2)
+        print("predicciones1:", self.predictions1)
+        print("predicciones2:", self.predictions2)
+
+        acc_at_least_one, acc_both = self.metrics_cal.accuracys(gt1=source1_labels, 
+                                                                gt2=source2_labels,
                                                                 p1=self.predictions1,
                                                                 p2=self.predictions2)
         
         best_prediction_source1 = self.metrics_cal.best_predicctions(source1_gt,source2_gt,source1_labels,
     source2_labels)
-        # (
-        #     best_prediction_source1,
-        #     y_predicted_s1_recon,
-        #     y_predicted_s2_recon,
-        #     bpsnr,
-        #     bpsnr_d,
-        #     acc_at_least_one,
-        #     acc_both,
-        # ) = out.outcomes(
-        #     self.mask1,
-        #     self.mask2,
-        #     self.source1_estimation,
-        #     self.source2_estimation,
-        #     self.mixed_input,
-        #     source1_gt,
-        #     source2_gt,
-        #     source1_labels,
-        #     source2_labels,
-        #     self.predictor,
-        # )
 
         if show_image:
             self.graphicator.complete_plot(
