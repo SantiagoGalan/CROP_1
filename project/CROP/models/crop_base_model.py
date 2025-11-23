@@ -1,6 +1,4 @@
-import tensorflow as tf
 import numpy as np
-from project.custom_layers.sampling import Sampling
 from project.CROP.utitls.graphics import Graphics
 import project.inference.outcomes as out
 import project.inference.metrics as met
@@ -57,6 +55,7 @@ class CropBaseModel(ABC):
         }
 
         self.model_params = {**default_params, **(model_params or {})}
+        self.graphicator = Graphics
 
     # hacer una funcion aparte como  decoded
     @abstractmethod
@@ -79,6 +78,20 @@ class CropBaseModel(ABC):
     ):
         pass
 
+    def mix(self,source1_gt,source2_gt,params):
+        
+        average_image = params["alpha_mix"] * source1_gt.astype(np.float32) + (
+            1 - params["alpha_mix"]
+        ) * source2_gt.astype(np.float32)
+        
+        mixed_input = average_image
+        mask_source1 = mixed_input
+        mask_source2 = mixed_input
+        reconstructed_source1 = mixed_input
+        reconstructed_source2 = mixed_input
+        return mixed_input, mask_source1, mask_source2, reconstructed_source1, reconstructed_source2
+
+
     def unmix(
         self,
         source1_gt,
@@ -90,21 +103,13 @@ class CropBaseModel(ABC):
         save_path=None,
         params=None,
     ):
+                
         # combinar defaults con parámetros recibidos
         params = {**self.model_params, **(params or {})}
 
-        # usar params["alpha_mix"] como antes
-        average_image = params["alpha_mix"] * source1_gt.astype(np.float32) + (
-            1 - params["alpha_mix"]
-        ) * source2_gt.astype(np.float32)
+        mixed_input, mask_source1, mask_source2, reconstructed_source1, reconstructed_source2 = self.mix(source1_gt,source2_gt,params)
 
-        mixed_input = average_image
-        mask_source1 = mixed_input
-        mask_source2 = mixed_input
-        reconstructed_source1 = mixed_input
-        reconstructed_source2 = mixed_input
-
-        for j in range(iterations):
+        for _ in range(iterations):
             (
                 mask_source1,
                 mask_source2,
@@ -118,7 +123,7 @@ class CropBaseModel(ABC):
                 mask_source2,
                 reconstructed_source1,
                 reconstructed_source2,
-                params,  # ← pasa parámetros dinámicos
+                params,
             )
         (
             best_prediction_source1,
@@ -142,18 +147,14 @@ class CropBaseModel(ABC):
         )
 
         if show_image:
-            Graphics.complete_plot(
+            self.graphicator.complete_plot(
                 mixed_input,
                 source1_gt,
                 source2_gt,
-                source1_cond,
-                source2_cond,
                 reconstructed_source1,
                 reconstructed_source2,
                 mask_source1,
                 mask_source2,
-                predictions_1,
-                predictions_2,
                 best_prediction_source1,
                 bias=self.model_params["bias"],
                 slope=self.model_params["slope"],
@@ -173,33 +174,26 @@ class CropBaseModel(ABC):
             "acc_both": acc_both,
         }
 
-    def get_curve(
+    def acc_curve(
         self,
         source1_gt,
         source2_gt,
         source1_cond,
         source2_cond,
         iterations=3,
+        params=None,
+        name=None
     ):
 
-        average_image = self.alpha_mix * source1_gt.astype(np.float32) + (
-            1 - self.alpha_mix
-        ) * source2_gt.astype(np.float32)
-        x_mix = average_image
+       # combinar defaults con parámetros recibidos
+        params = {**self.model_params, **(params or {})}
 
-        # inicialmente todas las variables son el input.
-        mixed_input = x_mix
-        mask_source1 = x_mix
-        mask_source2 = x_mix
-        reconstructed_source1 = x_mix
-        reconstructed_source2 = x_mix
-
-        # condition_encoder = tf.zeros_like(source1_cond)
+        mixed_input, mask_source1, mask_source2, reconstructed_source1, reconstructed_source2 = self.mix(source1_gt,source2_gt,params)
 
         acc_at_least_one_plot = []
         acc_both_plot = []
 
-        for j in range(iterations):
+        for _ in range(iterations):
             (
                 mask_source1,
                 mask_source2,
@@ -207,12 +201,13 @@ class CropBaseModel(ABC):
                 reconstructed_source2,
                 predictions_1,
                 predictions_2,
-            ) = self.decoded_funtion(
+            ) = self.decode(
                 mixed_input,
                 mask_source1,
                 mask_source2,
                 reconstructed_source1,
                 reconstructed_source2,
+                params
             )
 
             y_predicted_s1_recon = self.predictor(
@@ -223,14 +218,16 @@ class CropBaseModel(ABC):
             )
 
             acc_at_least_one, acc_both = met.accuracys(
+                gt1=source1_cond, 
+                gt2=source2_cond,
                 p1=y_predicted_s1_recon,
-                p2=y_predicted_s2_recon,
-                y1=source1_cond,
-                y2=source2_cond,
+                p2=y_predicted_s2_recon
             )
 
             acc_at_least_one_plot.append(acc_at_least_one)
             acc_both_plot.append(acc_both)
+
+        self.graphicator.acc_plot(acc_at_least_one_plot,acc_both_plot,name)
 
         return {
             "acc_at_least_one_plot": acc_at_least_one_plot,
