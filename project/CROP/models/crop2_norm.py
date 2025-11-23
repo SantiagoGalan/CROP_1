@@ -1,11 +1,3 @@
-from CROP_models.crop_base_model import CropBaseModel
-#from  crop_base_model import CropBaseModel
-import tensorflow as tf
-
-
-
-
-
 from project.CROP.models.crop_base_model import CropBaseModel
 from project.custom_layers.sampling import Sampling
 
@@ -13,7 +5,9 @@ from project.custom_layers.sampling import Sampling
 import tensorflow as tf
 
 
-class Crop2(CropBaseModel):
+
+class Crop2Norm(CropBaseModel):
+
 
     def filter(self, filter_1, mixed_input, alpha,bias,slope): 
         #best_filtered_var_sigmoid
@@ -56,9 +50,9 @@ class Crop2(CropBaseModel):
         mask_source2,
         reconstructed_source1,
         reconstructed_source2,
-        params,
-
+        params
     ):
+        
         alpha_1 = params["alpha_1"]
         alpha_2 = params["alpha_1"]
         beta = params["beta"]
@@ -66,81 +60,24 @@ class Crop2(CropBaseModel):
         slope = params["slope"]
         gamma = params["gamma"]
 
-        reconstructed_source1, mask_source1, predictions_1 = (
-            self.filter(
-                reconstructed_source2, mixed_input, alpha_2,bias,slope
-            )
-        )
-
-        alpha_2 = alpha_2 * beta
-
-        x__x = (reconstructed_source1 + reconstructed_source2) / 2
-
-        x__x_e = x__x - mixed_input
-
-        reconstructed_source1 = reconstructed_source1 - (x__x_e * gamma)
-
-        reconstructed_source1 = tf.clip_by_value(
-            reconstructed_source1, clip_value_min=0, clip_value_max=1
-        )
-
-        reconstructed_source2, mask_source2, predictions_2 = (
-            self.filter(
-                reconstructed_source1, mixed_input, alpha_1,bias,slope
-            )
-        )
-
-        alpha_1 = alpha_1 * beta
-
-        x__x = (reconstructed_source1 + reconstructed_source2) / 2
-        x__x_e = x__x - mixed_input
-
-        reconstructed_source2 = reconstructed_source2 - (x__x_e * gamma)
-
-        reconstructed_source2 = tf.clip_by_value(
-            reconstructed_source2, clip_value_min=0, clip_value_max=1
-        )
-
-        return (
-            mask_source1,
-            mask_source2,
-            reconstructed_source1,
-            reconstructed_source2,
-            predictions_1,
-            predictions_2,
-        )
-
-
-
-
-class Crop2Norm(CropBaseModel):
-
-    def decoded_funtion(
-        self,
-        mixed_input,
-        mask_source1,
-        mask_source2,
-        reconstructed_source1,
-        reconstructed_source2,
-        init_placeholder,
-    ):
-
         # Estimación de la fuente 1
         reconstructed_source1, mask_source1, predictions_1 = (
-            self.best_filtered_var_sigmoid(
-                reconstructed_source2, mixed_input, self.alpha_2
+            self.filter(
+                reconstructed_source2, mixed_input, alpha_2,bias, slope
             )
         )
-        self.alpha_2 *= self.beta
+        alpha_2 *= beta
 
 
         # Estimación de la fuente 2
         reconstructed_source2, mask_source2, predictions_2 = (
-            self.best_filtered_var_sigmoid(
-                reconstructed_source1, mixed_input, self.alpha_1
+            self.filter(
+                reconstructed_source1, mixed_input, alpha_1,bias, slope
+            
+
             )
         )
-        self.alpha_1 *= self.beta
+        alpha_1 *= beta
 
         eps = 1e-6
         mask_sum = tf.maximum(mask_source1 + mask_source2, eps)

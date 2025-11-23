@@ -10,14 +10,10 @@ class Graphics:
         mixed_input,
         source1_gt,
         source2_gt,
-        source1_cond,
-        source2_cond,
         reconstructed_source1,
         reconstructed_source2,
         mask_source1,
         mask_source2,
-        predictions_1,
-        predictions_2,
         best_prediction_source1,
         bias,
         slope,
@@ -107,3 +103,22 @@ class Graphics:
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches="tight")
         plt.show()
+
+
+    @classmethod
+    def acc_plot(cls,acc_at_least_one_plot,acc_both_plot,plot_name=None):
+    
+        plt.plot(acc_at_least_one_plot, label=f"al menos uno ( {acc_at_least_one_plot[-1] } )")
+        plt.plot(acc_both_plot, label=f"ambos ({acc_both_plot[-1]})")
+        plt.grid()
+        plt.title("Accuracy")
+        plt.xlabel("iterations")
+        plt.ylabel("acc")
+        plt.legend()
+        if plot_name:
+            plt.savefig(f"{plot_name}.png")
+        plt.show()
+
+
+
+
