@@ -53,7 +53,7 @@ class Crop2(CropBaseModel):
             self.filter(self.source2_estimation, self.mixed_input, alpha_2,bias,slope)
         )
         
-        #asignaciones
+     
         self.source1_estimation = reconstructed_source1
         self.mask1 = mask_source1
         self.predictions1 = predictions_1 
