@@ -1,40 +1,29 @@
 import os
-import sys
-
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "../..")))
+import os
 from keras.models import load_model
 from project.custom_layers.sampling import Sampling
 from project.custom_layers.reshapeLayer import ReshapeLayer
 from project.data.get_data import get_mnist_data
 from project.models_definitions.cvae import CVAE
 
-COMMON_PATH = "../trained_models"
-
+# === RUTAS ABSOLUTAS, FIJAS, ROBUSTAS ===
+BASE_DIR = os.path.dirname(__file__)          # project/trained_models/
+PROJECT_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))  # project/
+COMMON_PATH = os.path.join(BASE_DIR)          # project/trained_models/
 
 def cvae(lat, inter, dataset):
-    """
-    Inputs: - Models path
-            - Data name ("" for mnist "fashion" for fashion mnist)
-    Outputs:- Train models
-            - Dataset
-    """
+    encoder_path = os.path.join(COMMON_PATH, "encoders", f"en_int_{inter}_lat_{lat}_{dataset}.keras")
+    decoder_path = os.path.join(COMMON_PATH, "decoders", f"de_int_{inter}_lat_{lat}_{dataset}.keras")
 
     encoder = load_model(
-        f"{COMMON_PATH}/encoders/en_int_{inter}_lat_{lat}_{dataset}.keras",
+        encoder_path,
         custom_objects={"Sampling": Sampling},
     )
-    decoder = load_model(
-        f"{COMMON_PATH}/decoders/de_int_{inter}_lat_{lat}_{dataset}.keras"
-    )
+    decoder = load_model(decoder_path)
 
-    cvae = CVAE(
-        encoder=encoder,
-        decoder=decoder,
-        original_dim=28 * 28,
-        beta=1,
-        name=f"cvae_laten_{lat}_inter_{inter}_{dataset}",
-    )
-    return cvae
+    # Si necesitas reconstruir CVAE:
+    return CVAE(encoder, decoder,original_dim=28*28)
+
 
 
 def data(dataset):
@@ -42,70 +31,58 @@ def data(dataset):
 
 
 def predictor(dataset):
+    model_path = os.path.join(COMMON_PATH, "predictores", f"CCE_Conv2D_{dataset}.keras")
+    return load_model(model_path, {"ReshapeLayer": ReshapeLayer})
 
-    return load_model(
-        f"{COMMON_PATH}/predictores/CCE_Conv2D_{dataset}.keras",
-        {"ReshapeLayer": ReshapeLayer},
-    )
-
-
-def all_models(
-    encoders_paths=f"{COMMON_PATH}/encoders/",
-    decoders_paths=f"{COMMON_PATH}/decoders/",
-    dataset="mnist"
-):
+def all_models(dataset="mnist"):
     import os
-    import sys
-
-    sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "../..")))
     from keras.models import load_model
-    from custom_layers.sampling import Sampling
-    from models_definitions.cvae import CVAE
+    from project.custom_layers.sampling import Sampling
+    from project.models_definitions.cvae import CVAE
 
-    # Obtener listas de archivos
-    encoder_files = sorted(os.listdir(encoders_paths))
-    decoder_files = sorted(os.listdir(decoders_paths))
+    encoders_dir = os.path.join(COMMON_PATH, "encoders")
+    decoders_dir = os.path.join(COMMON_PATH, "decoders")
 
-    # Función para extraer clave
+    encoder_files = sorted(os.listdir(encoders_dir))
+    decoder_files = sorted(os.listdir(decoders_dir))
+
     def get_key(filename):
-        return "_".join(filename.split("_")[2:])
-
-    # Crear diccionarios clave → path
+        return "_".join(filename.split("_")[2:])   # ejemplo: int_128_lat_64_mnist.keras
 
     encoders = {
-        get_key(f): os.path.join(encoders_paths, f)
+        get_key(f): os.path.join(encoders_dir, f)
         for f in encoder_files
         if f.endswith(f"{dataset}.keras")
     }
+
     decoders = {
-        get_key(f): os.path.join(decoders_paths, f)
+        get_key(f): os.path.join(decoders_dir, f)
         for f in decoder_files
         if f.endswith(f"{dataset}.keras")
     }
 
-    # Claves comunes entre encoder y decoder
     common_keys = sorted(set(encoders.keys()) & set(decoders.keys()))
     print(f"Encontrados {len(common_keys)} pares de modelos.")
 
     models = []
 
-    # Iterar sobre modelos
     for key in common_keys:
-
         encoder_path = encoders[key]
         decoder_path = decoders[key]
 
         encoder = load_model(encoder_path, custom_objects={"Sampling": Sampling})
         decoder = load_model(decoder_path)
 
-        cvae = CVAE(
-            encoder,
-            decoder,
-            original_dim=28 * 28,
-            name=f"cvae_{encoder_path.split("en_")[1].split(".")[0]}",
-        )
+        name = f"cvae_{key}"
+
+        cvae = CVAE(encoder, decoder, original_dim=28*28, name=name)
         cvae.compile(optimizer="adam")
 
         models.append(cvae)
+        print("Encoders:", sorted(os.listdir(encoders_dir)))
+        print("Decoders:", sorted(os.listdir(decoders_dir)))
 
+        print("Claves encoders:", encoders.keys())
+        print("Claves decoders:", decoders.keys())
+        print("common_keys:", common_keys)
     return models

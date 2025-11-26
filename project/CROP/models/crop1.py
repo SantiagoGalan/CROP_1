@@ -39,38 +39,31 @@ class Crop1(CropBaseModel):
 
 
 
-    def decode(
-        self,
-        mixed_input,
-        mask_source1,
-        mask_source2,
-        reconstructed_source1,
-        reconstructed_source2,
-        params,
-    ):
-
-        alpha_1 = params["alpha_1"]
-        alpha_2 = params["alpha_1"]
-        beta = params["beta"]
-        bias = params["bias"]
-        slope = params["slope"]
+    def decode(self):
+        alpha_1 = self.model_params["alpha_1"]
+        alpha_2 = self.model_params["alpha_2"]
+        beta = self.model_params["beta"]
+        bias = self.model_params["bias"]
+        slope = self.model_params["slope"]
         # Estimación de la fuente 1
         reconstructed_source1, mask_source1, predictions_1 = (
-            self.filter(reconstructed_source2, mixed_input, alpha_2,bias,slope)
+            self.filter(self.source2_estimation, self.mixed_input, alpha_2,bias,slope)
         )
-        alpha_2 *= beta
+        #asignaciones
+        self.source1_estimation = reconstructed_source1
+        self.mask1 = mask_source1
+        self.predictions1 = predictions_1 
+        self.model_params["alpha_2"] = alpha_2 * beta
 
         # Estimación de la fuente 2
         reconstructed_source2, mask_source2, predictions_2 = (
-            self.filter(reconstructed_source1, mixed_input, alpha_1,bias,slope)
+            self.filter(self.source1_estimation, self.mixed_input, alpha_1,bias,slope)
         )
-        alpha_1 *= beta
 
-        return (
-            mask_source1,
-            mask_source2,
-            reconstructed_source1,
-            reconstructed_source2,
-            predictions_1,
-            predictions_2,
-        )
+        ## asignaciones
+        self.source2_estimation = reconstructed_source2
+        self.mask2 = mask_source2
+        self.predictions2 = predictions_2 
+        self.model_params["alpha_1"] = alpha_1 * beta
+
+        return
