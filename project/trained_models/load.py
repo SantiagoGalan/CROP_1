@@ -79,5 +79,10 @@ def all_models(dataset="mnist"):
         cvae.compile(optimizer="adam")
 
         models.append(cvae)
+        print("Encoders:", sorted(os.listdir(encoders_dir)))
+        print("Decoders:", sorted(os.listdir(decoders_dir)))
 
+        print("Claves encoders:", encoders.keys())
+        print("Claves decoders:", decoders.keys())
+        print("common_keys:", common_keys)
     return models
