@@ -148,6 +148,7 @@ class CropBaseModel(ABC):
         show_image=False,
         save_path=None,
         params=None,
+        labels = None 
     ):
                 
         # combinar defaults con parámetros recibidos
@@ -178,6 +179,7 @@ class CropBaseModel(ABC):
         best_prediction_source1 = self.metrics_cal.best_predicctions(source1_gt,source2_gt,source1_labels,
     source2_labels)
 
+
         if show_image:
             self.graphicator.complete_plot(
                 self.mixed_input,
@@ -195,9 +197,10 @@ class CropBaseModel(ABC):
                 acc_at_least_one=acc_at_least_one,
                 acc_both=acc_both,
                 save_path=save_path,
+                class_labels=labels,
             )
-
-        return { # devolver 2 dicionarios, uno de metricas y otro de "imagenes"
+        
+        return { 
             "bpsnr": bpsnr_mean_estimation,
             "bpsnr_d": bpsnr_mean_mask,
             "predictions_1": self.predictions1,

@@ -75,7 +75,7 @@ class Graphics:
                     img = tf.reshape(img, (img_size, img_size))
                 img = img.numpy()
                 ax.imshow(img, cmap="gray")
-
+                
                 # Etiquetas de fila
                 if col == 0:
                     ax.set_ylabel(
