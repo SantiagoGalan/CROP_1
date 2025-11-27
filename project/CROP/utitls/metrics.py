@@ -149,7 +149,7 @@ class Metrics():
         acc_both = np.count_nonzero(both) / len(both)
 
         return round(acc_at_least_one, 2), round(acc_both, 2)
-    
+
     @classmethod
     def best_predicctions(cls,gt1,gt2,source1_cond,
     source2_cond):

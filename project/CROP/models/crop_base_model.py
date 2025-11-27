@@ -158,9 +158,6 @@ class CropBaseModel(ABC):
         for _ in range(iterations):
             
              self.decode()
-            # get_all_metrics():
-            #quality metrics
-
 
         bpsnr_mean_estimation, bpsnr_std_estimation = self.metrics_cal.batched_psnr(gt1=source1_gt,
                                                               gt2=source2_gt,
@@ -172,16 +169,12 @@ class CropBaseModel(ABC):
                                                               gen1=self.mask1,
                                                               gen2=self.mask2)
 
-        print("gt1:", self.predictions1)
-        print("gt2:", self.predictions2)
-        print("predicciones1:", self.predictions1)
-        print("predicciones2:", self.predictions2)
-
         acc_at_least_one, acc_both = self.metrics_cal.accuracys(gt1=source1_labels, 
                                                                 gt2=source2_labels,
                                                                 p1=self.predictions1,
                                                                 p2=self.predictions2)
-        
+        print("accs:",  acc_at_least_one, acc_both )
+
         best_prediction_source1 = self.metrics_cal.best_predicctions(source1_gt,source2_gt,source1_labels,
     source2_labels)
 
