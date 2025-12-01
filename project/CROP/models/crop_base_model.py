@@ -66,7 +66,7 @@ class CropBaseModel(ABC):
             "alpha_mix": 0.5,
             "beta": 1,
         }
-
+        self.name = cvae.name
         self.model_params = {**default_params, **(model_params or {})}
         #modulos de calculos/graficos
         self.graphicator = Graphics
@@ -196,7 +196,7 @@ class CropBaseModel(ABC):
                 best_prediction_source1,
                 bias=self.model_params["bias"],
                 slope=self.model_params["slope"],
-                title="",
+                title=f"Modelo  ---{self.name}-- dataset --- --- ",
                 bpsnr=bpsnr_mean_estimation,  # mean value
                 acc_at_least_one=acc_at_least_one,
                 acc_both=acc_both,

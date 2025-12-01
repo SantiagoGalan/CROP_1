@@ -53,57 +53,52 @@ class Graphics:
 
         fig_width = num_cols * 1
         fig_height = num_rows * 1
-        fig, axes = plt.subplots(num_rows, num_cols, figsize=(fig_width, fig_height))
+        # Creamos una columna extra (columna 0) para los labels
+        fig, axes = plt.subplots(num_rows, num_cols + 1, figsize=(fig_width + 2, fig_height))
 
-        # Asegurar que axes siempre sea 2D
-        if num_rows == 1 and num_cols == 1:
-            axes = np.array([[axes]])
-        elif num_rows == 1:
-            axes = np.expand_dims(axes, axis=0)
-        elif num_cols == 1:
-            axes = np.expand_dims(axes, axis=1)
+        # Asegurar que axes sea 2D
+        if num_rows == 1:
+            axes = np.expand_dims(axes, 0)
+        if num_cols == 1:
+            axes = np.expand_dims(axes, 1)
 
-        # ---- Dibujar imágenes ----
+        # Dibujar imágenes (empiezan en columna 1)
         for row in range(num_rows):
+            # Label en la columna 0
+            ax_label = axes[row, 0]
+            ax_label.axis("off")
+            ax_label.text(
+                0.5, 0.5, row_labels[row],
+                ha="center", va="center",
+                fontsize=10
+            )
+
+            # Imágenes desde columna 1
             for col in range(num_cols):
-                ax = axes[row, col]
+                ax = axes[row, col+1]
                 ax.axis("off")
 
-                # Obtener imagen
                 img = images[row][col] if num_cols > 1 else images[row]
                 if len(img.shape) == 1:
                     img = tf.reshape(img, (img_size, img_size))
-                img = img.numpy()
-                ax.imshow(img, cmap="gray")
-                
-                # Etiquetas de fila
-                if col == 0:
-                    ax.set_ylabel(
-                        row_labels[row],
-                        labelpad=40,
-                        va="center",
-                        rotation=0,
-                    )
+                ax.imshow(img.numpy(), cmap="gray")
 
-        # ---- Título arriba con el nombre del modelo ----
+
+        # Título y textos
         fig.suptitle(title, color="darkred")
 
-        # ---- Texto de parámetros abajo ----
         param_text = f"bias={bias:.3f}, slope={slope:.3f}"
-        fig.text(0.5, -0.02, param_text, ha="center", color="darkblue")
+        fig.text(0.5, 0.02, param_text, ha="center", color="darkblue")
+
         fig.text(
             0.5,
-            -0.05,
+            0.00,
             f"bpsnr={bpsnr:.3f}, acc_one={acc_at_least_one} acc_both={acc_both}",
             ha="center",
-            color="darkblue",
+            color="darkblue"
         )
 
-        plt.tight_layout()
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches="tight")
         plt.show()
-
 
     @classmethod
     def acc_plot(cls,acc_at_least_one_plot,acc_both_plot,plot_name=None):
