@@ -51,6 +51,7 @@ class CropBaseModel(ABC):
     
     """
     def __init__(self, cvae, predictor, model_params=None, **kwargs):
+
         #auto enconder
         self.cvae = cvae
         #predictor
@@ -150,6 +151,8 @@ class CropBaseModel(ABC):
         params=None,
         labels = None 
     ):
+        
+      
                 
         # combinar defaults con parámetros recibidos
         self.model_params = {**self.model_params, **(params or {})}
@@ -169,16 +172,12 @@ class CropBaseModel(ABC):
                                                               gt2=source2_gt,
                                                               gen1=self.mask1,
                                                               gen2=self.mask2)
-        
-        print("predictions_1",self.predictions1)
-        print("predictions_2",self.predictions2)
        
         acc_at_least_one, acc_both = self.metrics_cal.accuracys(gt1=source1_labels, 
                                                                 gt2=source2_labels,
                                                                 p1=self.predictions1,
                                                                 p2=self.predictions2)
 
-        print("accs",acc_at_least_one,acc_both)
 
 
         best_prediction_source1 = self.metrics_cal.best_predicctions(source1_gt,source2_gt,source1_labels,
@@ -202,7 +201,7 @@ class CropBaseModel(ABC):
                 acc_at_least_one=acc_at_least_one,
                 acc_both=acc_both,
                 save_path=save_path,
-                class_labels=labels,
+                class_labels=labels, #TODO fix labels for visual feedback.
             )
         
         return { 
