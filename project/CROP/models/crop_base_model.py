@@ -3,7 +3,6 @@ import numpy as np
 from project.CROP.utitls.graphics import Graphics
 from project.CROP.utitls.metrics import Metrics
 
-import project.inference.outcomes as out
 import project.inference.metrics as met
 
 from abc import abstractmethod, ABC
@@ -50,14 +49,14 @@ class CropBaseModel(ABC):
     y definir las funciones filter y decode.
     
     """
-    def __init__(self, cvae, predictor, model_params=None, **kwargs):
+    def __init__(self, cvae, predictor):
 
         #auto enconder
         self.cvae = cvae
         #predictor
         self.predictor = predictor
         #parametos por defecto
-        default_params = {
+        self.default_params = {
             "alpha_1": -2,
             "alpha_2": -22,
             "bias": 0.22,
@@ -67,7 +66,7 @@ class CropBaseModel(ABC):
             "beta": 1,
         }
         self.name = cvae.name
-        self.model_params = {**default_params, **(model_params or {})}
+        self.model_params = self.default_params
         #modulos de calculos/graficos
         self.graphicator = Graphics
         self.metrics_cal = Metrics
@@ -138,6 +137,72 @@ class CropBaseModel(ABC):
 
         return average_image
 
+    def _compute_all_metrics(self, gt1, gt2, lbl1, lbl2):
+
+        bpsnr_mean_est, bpsnr_std_est = self.metrics_cal.batched_psnr(
+            gt1=gt1, gt2=gt2,
+            gen1=self.source1_estimation, gen2=self.source2_estimation
+        )
+
+        bpsnr_mean_mask, bpsnr_std_mask = self.metrics_cal.batched_psnr(
+            gt1=gt1, gt2=gt2,
+            gen1=self.mask1, gen2=self.mask2
+        )
+
+        ssim_mean, ssim_std = self.metrics_cal.batched_ssim(
+            gt1=gt1, gt2=gt2,
+            gen1=self.mask1, gen2=self.mask2
+        )
+
+        acc_at_least_one, acc_both = self.metrics_cal.accuracys(
+            gt1=lbl1, gt2=lbl2,
+            p1=self.predictions1, p2=self.predictions2
+        )
+
+        best_prediction_source1 = self.metrics_cal.best_predicctions(
+            gt1, gt2, lbl1, lbl2
+        )
+
+        return {
+            "bpsnr": (bpsnr_mean_est, bpsnr_std_est),
+            "bpsnr_d": (bpsnr_mean_mask, bpsnr_std_mask),
+            "ssim": (ssim_mean, ssim_std),
+            "acc_at_least_one": acc_at_least_one,
+            "acc_both": acc_both,
+            "best_prediction_source1": best_prediction_source1,
+        }
+
+    def _format_dict_for_printing(self, data):
+        """Convierte a formato imprimible. Integra mean y std si corresponde."""
+
+        formatted = {}
+        for k, v in data.items():
+
+            # 👇 OMITIR predicciones
+            if k in ("predictions_1", "predictions_2", "best_prediction_source1"):
+                continue
+
+            # Caso 1: métrica con mean y std → tupla (mean, std)
+            if isinstance(v, tuple) and len(v) == 2:
+                mean, std = v
+                formatted[k] = f"mean: {mean:.3f}  std:{std:.3f}"
+
+            # Caso 2: métrica simple
+            elif isinstance(v, (int, float)):
+                formatted[k] = f"{v:.3f}"
+
+            else:
+                formatted[k] = str(v)
+
+        return formatted
+
+
+    def _print_named_table(self, data):
+        data = self._format_dict_for_printing(data)
+        max_key_len = max(len(k) for k in data.keys())
+
+        for key, value in data.items():
+            print(f"{key.ljust(max_key_len)} : {value}")
 
     def unmix(
         self,
@@ -147,71 +212,63 @@ class CropBaseModel(ABC):
         source2_labels,
         iterations=3,
         show_image=False,
+        show_metrics=True,
         save_path=None,
         params=None,
-        labels = None 
+        labels=None,
     ):
-        
-      
-                
-        # combinar defaults con parámetros recibidos
+
+        # Mezclar parámetros por defecto + overrides
         self.model_params = {**self.model_params, **(params or {})}
 
-        self.mix(source1_gt,source2_gt,self.model_params)
+        # Mezcla inicial
+        self.mix(source1_gt, source2_gt, self.model_params)
 
+        # Decodificación iterativa
         for _ in range(iterations):
-            
-             self.decode()
+            self.decode()
 
-        bpsnr_mean_estimation, bpsnr_std_estimation = self.metrics_cal.batched_psnr(gt1=source1_gt,
-                                                              gt2=source2_gt,
-                                                              gen1=self.source1_estimation,
-                                                              gen2=self.source2_estimation)
-        
-        bpsnr_mean_mask, bpsnr_std_mask = self.metrics_cal.batched_psnr(gt1=source1_gt,
-                                                              gt2=source2_gt,
-                                                              gen1=self.mask1,
-                                                              gen2=self.mask2)
-       
-        acc_at_least_one, acc_both = self.metrics_cal.accuracys(gt1=source1_labels, 
-                                                                gt2=source2_labels,
-                                                                p1=self.predictions1,
-                                                                p2=self.predictions2)
+        # Cálculo de métricas en un único lugar
+        metrics = self._compute_all_metrics(
+            source1_gt, source2_gt, source1_labels, source2_labels
+        )
 
+        # Armar diccionario final del resultado
+        result = {
+            "predictions_1": self.predictions1,
+            "predictions_2": self.predictions2,
+            "model_params": self.model_params,
+            **{k: metrics[k] for k in ("bpsnr", "ssim", "bpsnr_d", "acc_at_least_one", "acc_both")}
+        }
 
-
-        best_prediction_source1 = self.metrics_cal.best_predicctions(source1_gt,source2_gt,source1_labels,
-    source2_labels)
-
-
+        # Mostrar imagen con métricas
         if show_image:
             self.graphicator.complete_plot(
                 self.mixed_input,
-                source1_gt,
-                source2_gt,
-                self.source1_estimation,
-                self.source2_estimation,
-                self.mask1,
-                self.mask2,
-                best_prediction_source1,
-                bias=self.model_params["bias"],
-                slope=self.model_params["slope"],
-                title=f"Modelo  ---{self.name}-- dataset --- --- ",
-                bpsnr=bpsnr_mean_estimation,  # mean value
-                acc_at_least_one=acc_at_least_one,
-                acc_both=acc_both,
+                source1_gt, source2_gt,
+                self.source1_estimation, self.source2_estimation,
+                self.mask1, self.mask2,
+                metrics["best_prediction_source1"],
+                model_params=self.model_params,
+                metrics=metrics,
+                title=f"Modelo: {self.name}",
                 save_path=save_path,
-                class_labels=labels, #TODO fix labels for visual feedback.
+                class_labels=labels,
             )
-        
-        return { 
-            "bpsnr": bpsnr_mean_estimation,
-            "bpsnr_d": bpsnr_mean_mask,
-            "predictions_1": self.predictions1,
-            "predictions_2": self.predictions2,
-            "acc_at_least_one": acc_at_least_one,
-            "acc_both": acc_both,
-        }
+
+        # Mostrar tabla de parámetros y métricas
+        if show_metrics:
+            print("\n======= PARÁMETROS DEL MODELO =======")
+            self._print_named_table(self.model_params)
+
+            print("\n============= MÉTRICAS =============")
+            self._print_named_table(metrics)
+            print("====================================\n")
+
+        # reset a defaults
+        self.model_params = self.default_params
+
+        return result
 
     def acc_curve(
         self,
@@ -260,6 +317,7 @@ class CropBaseModel(ABC):
                 p1=y_predicted_s1_recon,
                 p2=y_predicted_s2_recon
             )
+
 
             acc_at_least_one_plot.append(acc_at_least_one)
             acc_both_plot.append(acc_both)

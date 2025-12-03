@@ -15,16 +15,21 @@ class Graphics:
         mask_source1,
         mask_source2,
         best_prediction_source1,
-        bias,
-        slope,
+        model_params=None,
+        metrics=None,
         title="",
-        bpsnr=None,
-        acc_at_least_one=None,
-        acc_both=None,
         save_path=None,
         class_labels=None,
     ):
+        """
+        Versión mejorada:
+        ✔ No muestra predicciones en métricas
+        ✔ Igual estructura visual
+        """
 
+        # -----------------------------
+        # 1. Construcción de la grilla
+        # -----------------------------
         images = [
             mixed_input,
             source1_gt,
@@ -53,29 +58,26 @@ class Graphics:
 
         fig_width = num_cols * 1
         fig_height = num_rows * 1
-        # Creamos una columna extra (columna 0) para los labels
         fig, axes = plt.subplots(num_rows, num_cols + 1, figsize=(fig_width + 2, fig_height))
 
-        # Asegurar que axes sea 2D
+        # Asegurar ejes 2D
         if num_rows == 1:
             axes = np.expand_dims(axes, 0)
         if num_cols == 1:
             axes = np.expand_dims(axes, 1)
 
-        # Dibujar imágenes (empiezan en columna 1)
+        # -----------------------------
+        # 2. Dibujar las imágenes
+        # -----------------------------
         for row in range(num_rows):
-            # Label en la columna 0
+            # Etiqueta de fila
             ax_label = axes[row, 0]
             ax_label.axis("off")
-            ax_label.text(
-                0.5, 0.5, row_labels[row],
-                ha="center", va="center",
-                fontsize=10
-            )
+            ax_label.text(0.5, 0.5, row_labels[row], ha="center", va="center", fontsize=10)
 
-            # Imágenes desde columna 1
+            # Contenido visual
             for col in range(num_cols):
-                ax = axes[row, col+1]
+                ax = axes[row, col + 1]
                 ax.axis("off")
 
                 img = images[row][col] if num_cols > 1 else images[row]
@@ -83,20 +85,74 @@ class Graphics:
                     img = tf.reshape(img, (img_size, img_size))
                 ax.imshow(img.numpy(), cmap="gray")
 
-
-        # Título y textos
+        # -----------------------------
+        # 3. Título general
+        # -----------------------------
         fig.suptitle(title, color="darkred")
 
-        param_text = f"bias={bias:.3f}, slope={slope:.3f}"
-        fig.text(0.5, 0.02, param_text, ha="center", color="darkblue")
+        # -----------------------------
+        # 4. Texto de PARÁMETROS
+        # -----------------------------
+        if model_params is not None:
+            param_parts = []
 
-        fig.text(
-            0.5,
-            0.00,
-            f"bpsnr={bpsnr:.3f}, acc_one={acc_at_least_one} acc_both={acc_both}",
-            ha="center",
-            color="darkblue"
-        )
+            for k, v in model_params.items():
+                if isinstance(v, (int, float)):
+                    param_parts.append(f"{k}={v:.3f}")
+                else:
+                    param_parts.append(f"{k}={v}")
+
+            param_text = " | ".join(param_parts)
+
+            fig.text(
+                0.5,
+                0.05,
+                param_text,
+                ha="center",
+                color="darkblue",
+                fontsize=10,
+            )
+
+        # -----------------------------
+        # 5. Texto de MÉTRICAS
+        # -----------------------------
+        if metrics is not None:
+            metric_parts = []
+
+            for k, v in metrics.items():
+
+                if k in ("predictions_1", "predictions_2", "best_prediction_source1"):
+                    continue
+
+                # ✔ Métrica con mean ± std
+                if isinstance(v, tuple) and len(v) == 2:
+                    mean, std = v
+                    metric_parts.append(f"{k}={mean:.3f}")
+
+                # ✔ Métrica simple
+                elif isinstance(v, (int, float)):
+                    metric_parts.append(f"{k}={v:.3f}")
+
+                # ✔ Otros tipos
+                else:
+                    metric_parts.append(f"{k}={v}")
+
+            metrics_text = " | ".join(metric_parts)
+
+            fig.text(
+                0.5,
+                0.00,
+                metrics_text,
+                ha="center",
+                color="black",
+                fontsize=10,
+            )
+
+        # -----------------------------
+        # 6. Mostrar o guardar
+        # -----------------------------
+        if save_path:
+            plt.savefig(save_path, bbox_inches="tight")
 
         plt.show()
 
