@@ -1,4 +1,0 @@
-Carperta creada para generar notebooks con pruebas de con conceptos atomicas 
-cada notebook tiene que tener un titulo explicacion de lo que se quiere probar y una conclusion
-
-incluir: imagnees iguales para ver la mascara. Varaiciones del mismo digiito. Variaciones de la reconstruccion
