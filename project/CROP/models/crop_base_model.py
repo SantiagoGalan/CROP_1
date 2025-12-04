@@ -164,8 +164,8 @@ class CropBaseModel(ABC):
         )
 
         return {
-            "bpsnr": (bpsnr_mean_est, bpsnr_std_est),
-            "bpsnr_d": (bpsnr_mean_mask, bpsnr_std_mask),
+            "recon_bpsnr": (bpsnr_mean_est, bpsnr_std_est),
+            "mask_bpsnr": (bpsnr_mean_mask, bpsnr_std_mask),
             "ssim": (ssim_mean, ssim_std),
             "acc_at_least_one": acc_at_least_one,
             "acc_both": acc_both,
@@ -238,7 +238,7 @@ class CropBaseModel(ABC):
             "predictions_1": self.predictions1,
             "predictions_2": self.predictions2,
             "model_params": self.model_params,
-            **{k: metrics[k] for k in ("bpsnr", "ssim", "bpsnr_d", "acc_at_least_one", "acc_both")}
+            **{k: metrics[k] for k in ("recon_bpsnr", "ssim", "mask_bpsnr", "acc_at_least_one", "acc_both")}
         }
 
         # Mostrar imagen con métricas
@@ -246,8 +246,10 @@ class CropBaseModel(ABC):
             self.graphicator.complete_plot(
                 self.mixed_input,
                 source1_gt, source2_gt,
+                source1_labels,source2_labels,
                 self.source1_estimation, self.source2_estimation,
                 self.mask1, self.mask2,
+                self.predictions1,self.predictions2,
                 metrics["best_prediction_source1"],
                 model_params=self.model_params,
                 metrics=metrics,
@@ -258,12 +260,12 @@ class CropBaseModel(ABC):
 
         # Mostrar tabla de parámetros y métricas
         if show_metrics:
-            print("\n======= PARÁMETROS DEL MODELO =======")
+            print("\n======= PARÁMETROS DEL MODELO =====================")
             self._print_named_table(self.model_params)
 
-            print("\n============= MÉTRICAS =============")
+            print("\n============= MÉTRICAS ===========================")
             self._print_named_table(metrics)
-            print("====================================\n")
+            print("==================================================\n")
 
         # reset a defaults
         self.model_params = self.default_params
