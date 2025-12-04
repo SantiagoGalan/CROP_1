@@ -5,16 +5,21 @@ import tensorflow as tf
 
 class Graphics:
     @classmethod
+
     def complete_plot(
         cls,
         mixed_input,
         source1_gt,
         source2_gt,
+        source1_labels,
+        source2_labels,
         reconstructed_source1,
         reconstructed_source2,
         mask_source1,
         mask_source2,
-        best_prediction_source1,
+        prediction_source1,
+        prediction_source2,
+        best_prediction,
         model_params=None,
         metrics=None,
         title="",
@@ -24,6 +29,7 @@ class Graphics:
         """
         Versión mejorada:
         ✔ No muestra predicciones en métricas
+        ✔ Muestra labels debajo de las imágenes relevantes
         ✔ Igual estructura visual
         """
 
@@ -38,7 +44,7 @@ class Graphics:
             reconstructed_source2,
             mask_source1,
             mask_source2,
-            best_prediction_source1,
+            best_prediction,
         ]
 
         row_labels = [
@@ -70,7 +76,7 @@ class Graphics:
         # 2. Dibujar las imágenes
         # -----------------------------
         for row in range(num_rows):
-            # Etiqueta de fila
+            # Etiqueta de la fila
             ax_label = axes[row, 0]
             ax_label.axis("off")
             ax_label.text(0.5, 0.5, row_labels[row], ha="center", va="center", fontsize=10)
@@ -83,7 +89,51 @@ class Graphics:
                 img = images[row][col] if num_cols > 1 else images[row]
                 if len(img.shape) == 1:
                     img = tf.reshape(img, (img_size, img_size))
+
                 ax.imshow(img.numpy(), cmap="gray")
+
+                # -----------------------------
+                #     AÑADIR LABEL DE CLASE
+                # -----------------------------
+                if class_labels is not None:
+
+                    label_text = None
+
+                    # SOURCE1_GT
+                    if row_labels[row] == "source1_gt":
+                        label_idx = np.argmax(source1_labels[col])
+                        label_text = class_labels[label_idx]
+
+                    # SOURCE2_GT
+                    elif row_labels[row] == "source2_gt":
+                        label_idx = np.argmax(source2_labels[col])
+                        label_text = class_labels[label_idx]
+
+                    # X_FILT_1 (RECONSTRUCTED SOURCE 1)
+                    elif row_labels[row] == "x_filt_1":
+                        # usar la PREDICCIÓN del modelo, no la imagen reconstruida
+                        if prediction_source1 is not None:
+                            label_idx = np.argmax(prediction_source1[col])
+                            label_text = class_labels[label_idx]
+
+                    # X_FILT_2 (RECONSTRUCTED SOURCE 2)
+                    elif row_labels[row] == "x_filt_2":
+                        if prediction_source2 is not None:
+                            label_idx = np.argmax(prediction_source2[col])
+                            label_text = class_labels[label_idx]
+
+                    # Si hay label válido, imprimirlo
+                    if label_text is not None:
+                        ax.text(
+                            0.5,
+                            -0.15,
+                            f"{label_text}",
+                            ha="center",
+                            va="center",
+                            fontsize=9,
+                            color="blue",
+                            transform=ax.transAxes,
+                        )
 
         # -----------------------------
         # 3. Título general
@@ -124,16 +174,13 @@ class Graphics:
                 if k in ("predictions_1", "predictions_2", "best_prediction_source1"):
                     continue
 
-                # ✔ Métrica con mean ± std
                 if isinstance(v, tuple) and len(v) == 2:
                     mean, std = v
                     metric_parts.append(f"{k}={mean:.3f}")
 
-                # ✔ Métrica simple
                 elif isinstance(v, (int, float)):
                     metric_parts.append(f"{k}={v:.3f}")
 
-                # ✔ Otros tipos
                 else:
                     metric_parts.append(f"{k}={v}")
 
@@ -153,7 +200,8 @@ class Graphics:
         # -----------------------------
         if save_path:
             plt.savefig(save_path, bbox_inches="tight")
-
+        
+        plt.subplots_adjust(hspace=0.3) 
         plt.show()
 
     @classmethod
