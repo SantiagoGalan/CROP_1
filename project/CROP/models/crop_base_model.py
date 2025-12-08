@@ -1,11 +1,11 @@
+from tabnanny import verbose
 from tkinter import N
+from xml.sax.saxutils import prepare_input_source
 import numpy as np
 from project.CROP.utitls.graphics import Graphics
 from project.CROP.utitls.metrics import Metrics
-
-import project.inference.metrics as met
-
 from abc import abstractmethod, ABC
+
 
 """
 x_mix_orig → mixed_input
@@ -129,11 +129,11 @@ class CropBaseModel(ABC):
             1 - mix_params["alpha_mix"]
         ) * source2_gt.astype(np.float32)
         
-        self.mixed_input = average_image
-        self.mask1 = average_image
-        self.mask2 = average_image
-        self.source1_estimation = average_image
-        self.source2_estimation = average_image
+        self.mixed_input = (average_image)
+        self.mask1 = (average_image)
+        self.mask2 = (average_image)
+        self.source1_estimation = (average_image)
+        self.source2_estimation = (average_image)
 
         return average_image
 
@@ -283,49 +283,34 @@ class CropBaseModel(ABC):
         name=None
     ):
 
-       # combinar defaults con parámetros recibidos
-        params = {**self.model_params, **(params or {})}
+          # Mezclar parámetros por defecto + overrides
+        self.model_params = {**self.model_params, **(params or {})}
 
-        mixed_input, mask_source1, mask_source2, reconstructed_source1, reconstructed_source2 = self.mix(source1_gt,source2_gt,params)
+        # Mezcla inicial
+        self.mix(source1_gt, source2_gt, self.model_params)
 
         acc_at_least_one_plot = []
         acc_both_plot = []
 
+             # Decodificación iterativa
         for _ in range(iterations):
-            (
-                mask_source1,
-                mask_source2,
-                reconstructed_source1,
-                reconstructed_source2,
-                predictions_1,
-                predictions_2,
-            ) = self.decode(
-                mixed_input,
-                reconstructed_source1,
-                reconstructed_source2,
-                params
-            )
+            self.decode()
+            prediction1 = self.predictor.predict(self.source1_estimation,verbose=False)
+            prediction2 = self.predictor.predict(self.source2_estimation,verbose=False)
+            
 
-            y_predicted_s1_recon = self.predictor(
-                reconstructed_source1, training=False, verbose=0
-            )
-            y_predicted_s2_recon = self.predictor(
-                reconstructed_source2, training=False, verbose=0
-            )
+            acc_at_least_one, acc_both = self.metrics_cal.accuracys(
+                    gt1=source1_cond, gt2=source2_cond,
+                    p1=prediction1, p2=prediction2
+                )
 
-            acc_at_least_one, acc_both = met.accuracys(
-                gt1=source1_cond, 
-                gt2=source2_cond,
-                p1=y_predicted_s1_recon,
-                p2=y_predicted_s2_recon
-            )
 
 
             acc_at_least_one_plot.append(acc_at_least_one)
             acc_both_plot.append(acc_both)
 
         self.graphicator.acc_plot(acc_at_least_one_plot,acc_both_plot,name)
-
+      
         return {
             "acc_at_least_one_plot": acc_at_least_one_plot,
             "acc_both_plot": acc_both_plot,
