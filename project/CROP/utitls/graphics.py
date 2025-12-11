@@ -36,12 +36,16 @@ class Graphics:
         # -----------------------------
         # 1. Construcción de la grilla
         # -----------------------------
+        reconstructed_mix = 0.5 * reconstructed_source1 + 0.5 * reconstructed_source2
+        reconstructed_error = mixed_input - reconstructed_mix
         images = [
             mixed_input,
             source1_gt,
             source2_gt,
             reconstructed_source1,
             reconstructed_source2,
+            reconstructed_mix,
+            reconstructed_error,
             mask_source1,
             mask_source2,
             best_prediction,
@@ -53,8 +57,10 @@ class Graphics:
             "source2_gt",
             "x_filt_1",
             "x_filt_2",
-            "x_deco_1",
-            "x_deco_2",
+            "reconstructed_mix",
+            "reconstructed_error",
+            "mask_1",
+            "mask_2",
             "x_best_pred",
         ]
 
@@ -207,8 +213,8 @@ class Graphics:
     @classmethod
     def acc_plot(cls,acc_at_least_one_plot,acc_both_plot,plot_name=None):
     
-        plt.plot(acc_at_least_one_plot, label=f"al menos uno ( {acc_at_least_one_plot[-1] } )")
-        plt.plot(acc_both_plot, label=f"ambos ({acc_both_plot[-1]})")
+        #plt.plot(acc_at_least_one_plot, label=f"al menos uno ( {acc_at_least_one_plot[-1] } )")
+        plt.plot(acc_both_plot, label=f"ambos ({np.max(acc_both_plot)})")
         plt.grid()
         plt.title("Accuracy")
         plt.xlabel("iterations")
