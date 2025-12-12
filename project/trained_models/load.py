@@ -34,7 +34,7 @@ def predictor(dataset):
     model_path = os.path.join(COMMON_PATH, "predictores", f"CCE_Conv2D_{dataset}.keras")
     return load_model(model_path, {"ReshapeLayer": ReshapeLayer})
 
-def all_models(dataset="mnist"):
+def all_models():
     import os
     from keras.models import load_model
     from project.custom_layers.sampling import Sampling
