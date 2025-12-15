@@ -59,7 +59,6 @@ class Crop2(CropBaseModel):
         self.predictions1 = predictions_1 
         self.model_params["alpha_2"] = alpha_2 * beta
 
-
         x__x = (self.source1_estimation + self.source2_estimation) / 2
 
         x__x_e = x__x - self.mixed_input
@@ -69,8 +68,6 @@ class Crop2(CropBaseModel):
         self.source1_estimation = tf.clip_by_value(
             self.source1_estimation, clip_value_min=0, clip_value_max=1
         )
-
-         
 
         reconstructed_source2, mask_source2, predictions_2 = (
             self.filter(

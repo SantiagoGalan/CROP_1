@@ -37,7 +37,9 @@ class Graphics:
         # 1. Construcción de la grilla
         # -----------------------------
         reconstructed_mix = 0.5 * reconstructed_source1 + 0.5 * reconstructed_source2
-        reconstructed_error = mixed_input - reconstructed_mix
+        reconstructed_error =  reconstructed_mix - mixed_input 
+
+
         images = [
             mixed_input,
             source1_gt,
@@ -57,8 +59,8 @@ class Graphics:
             "source2_gt",
             "x_filt_1",
             "x_filt_2",
-            "reconstructed_mix",
-            "reconstructed_error",
+            "recon_mix",
+            "recon_error",
             "mask_1",
             "mask_2",
             "x_best_pred",
