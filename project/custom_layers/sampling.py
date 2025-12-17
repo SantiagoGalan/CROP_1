@@ -4,9 +4,8 @@ SEED = 1234
 class Sampling(Layer):
   def call(self, inputs):
     z_mean, z_log_var = inputs
-    batch = tf.shape(z_mean)[0]                                                 # batch = number of data in the batch
-    dim = tf.shape(z_mean)[1]                                                   # dim   = number of dimensions of "z"
-      # by default, random_normal has mean=0 and std=1.0
+    batch = tf.shape(z_mean)[0]                                                 
+    dim = tf.shape(z_mean)[1]                                                
     #epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
     epsilon = tf.random.stateless_normal(
     shape=tf.shape(z_mean),

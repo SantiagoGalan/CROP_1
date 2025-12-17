@@ -1,9 +1,6 @@
-from tabnanny import verbose
-from tkinter import N
-from xml.sax.saxutils import prepare_input_source
 import numpy as np
-from project.CROP.utitls.graphics import Graphics
-from project.CROP.utitls.metrics import Metrics
+from project.graphics.graphics import Graphics
+from project.metrics.metrics import Metrics
 from abc import abstractmethod, ABC
 
 
@@ -173,21 +170,17 @@ class CropBaseModel(ABC):
         }
 
     def _format_dict_for_printing(self, data):
-        """Convierte a formato imprimible. Integra mean y std si corresponde."""
 
         formatted = {}
         for k, v in data.items():
 
-            # 👇 OMITIR predicciones
             if k in ("predictions_1", "predictions_2", "best_prediction_source1"):
                 continue
 
-            # Caso 1: métrica con mean y std → tupla (mean, std)
-            if isinstance(v, tuple) and len(v) == 2:
+            if isinstance(v, tuple) and len(v) == 2: #si hay 2 metricas con media y std
                 mean, std = v
                 formatted[k] = f"mean: {mean:.3f}  std:{std:.3f}"
 
-            # Caso 2: métrica simple
             elif isinstance(v, (int, float)):
                 formatted[k] = f"{v:.3f}"
 

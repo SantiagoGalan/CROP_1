@@ -26,12 +26,6 @@ class Graphics:
         save_path=None,
         class_labels=None,
     ):
-        """
-        Versión mejorada:
-        ✔ No muestra predicciones en métricas
-        ✔ Muestra labels debajo de las imágenes relevantes
-        ✔ Igual estructura visual
-        """
 
         # -----------------------------
         # 1. Construcción de la grilla
@@ -143,14 +137,9 @@ class Graphics:
                             transform=ax.transAxes,
                         )
 
-        # -----------------------------
-        # 3. Título general
-        # -----------------------------
+
         fig.suptitle(title, color="darkred")
 
-        # -----------------------------
-        # 4. Texto de PARÁMETROS
-        # -----------------------------
         if model_params is not None:
             param_parts = []
 
@@ -171,9 +160,6 @@ class Graphics:
                 fontsize=10,
             )
 
-        # -----------------------------
-        # 5. Texto de MÉTRICAS
-        # -----------------------------
         if metrics is not None:
             metric_parts = []
 
@@ -203,9 +189,6 @@ class Graphics:
                 fontsize=10,
             )
 
-        # -----------------------------
-        # 6. Mostrar o guardar
-        # -----------------------------
         if save_path:
             plt.savefig(save_path, bbox_inches="tight")
         
@@ -229,3 +212,6 @@ class Graphics:
 
 
 
+######################################################################################
+######################################################################################
+######################################################################################

@@ -6,10 +6,13 @@ from project.custom_layers.reshapeLayer import ReshapeLayer
 from project.data.get_data import get_mnist_data
 from project.models_definitions.cvae import CVAE
 
-# === RUTAS ABSOLUTAS, FIJAS, ROBUSTAS ===
 BASE_DIR = os.path.dirname(__file__)          # project/trained_models/
-PROJECT_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))  # project/
-COMMON_PATH = os.path.join(BASE_DIR)          # project/trained_models/
+COMMON_PATH = "project/trained_models/"
+
+COMMON_PATH = os.path.abspath(
+    os.path.join(BASE_DIR, "..", "trained_models")
+)
+
 
 def cvae(lat, inter, dataset):
     encoder_path = os.path.join(COMMON_PATH, "encoders", f"en_int_{inter}_lat_{lat}_{dataset}.keras")
@@ -21,7 +24,6 @@ def cvae(lat, inter, dataset):
     )
     decoder = load_model(decoder_path)
 
-    # Si necesitas reconstruir CVAE:
     return CVAE(encoder, decoder,original_dim=28*28)
 
 
@@ -34,7 +36,7 @@ def predictor(dataset):
     model_path = os.path.join(COMMON_PATH, "predictores", f"CCE_Conv2D_{dataset}.keras")
     return load_model(model_path, {"ReshapeLayer": ReshapeLayer})
 
-def all_models():
+def all_models(dataset):
     import os
     from keras.models import load_model
     from project.custom_layers.sampling import Sampling
@@ -47,7 +49,7 @@ def all_models():
     decoder_files = sorted(os.listdir(decoders_dir))
 
     def get_key(filename):
-        return "_".join(filename.split("_")[2:])   # ejemplo: int_128_lat_64_mnist.keras
+        return "_".join(filename.split("_")[2:])  
 
     encoders = {
         get_key(f): os.path.join(encoders_dir, f)

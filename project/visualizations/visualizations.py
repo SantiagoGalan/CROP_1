@@ -227,9 +227,3 @@ def variantes_punto_fijo(cvae, z_fixed=None, num_puntos=5):
     plt.show()
     
     return z_fixed  # Retornar los puntos para poder reusarlos
-
-# Ejemplo de uso:
-# Generar nuevos puntos:
-# z_points = variantes_punto_fijo(cvae, num_puntos=5)
-# Reusar los mismos puntos:
-# variantes_punto_fijo(cvae_1, z_fixed=z_points)

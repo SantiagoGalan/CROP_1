@@ -1,4 +1,4 @@
-from keras.layers import Input, Dense, Concatenate, Reshape
+from keras.layers import Input, Dense, Concatenate
 from keras.models import Model
 
 def build_decoder(latent_dim=2, cond_dim=(10,), intermediate_dim=128, original_shape=(28, 28)):

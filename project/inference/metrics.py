@@ -38,7 +38,6 @@ def ssim_grayscale(target, preds):
         k2=0.03,
     )
 
-    # print(ssim)
     return ssim
 
 
