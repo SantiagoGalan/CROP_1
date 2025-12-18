@@ -185,11 +185,6 @@ def latent_space_umap(cvae, dataset, max_samples=2000, save_path=None, title="")
 def variantes_punto_fijo(cvae, z_fixed=None, num_puntos=5):
     """
     Muestra cómo diferentes puntos latentes generan dígitos bajo distintas condiciones.
-
-    Args:
-        cvae: modelo CVAE entrenado
-        z_fixed: puntos específicos del espacio latente (si es None, se generan aleatoriamente)
-        num_puntos: número de puntos latentes a usar (solo si z_fixed es None)
     """
     import numpy as np
     import matplotlib.pyplot as plt

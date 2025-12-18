@@ -43,38 +43,37 @@ class Crop2Norm(CropBaseModel):
 
 
 
-    def decode(
-        self,
-        mixed_input,
-        reconstructed_source1,
-        reconstructed_source2,
-        params
-    ):
+    def decode(self):
         
-        alpha_1 = params["alpha_1"]
-        alpha_2 = params["alpha_2"]
-        beta = params["beta"]
-        bias = params["bias"]
-        slope = params["slope"]
-        gamma = params["gamma"]
+        alpha_1 = self.model_params["alpha_1"]
+        alpha_2 = self.model_params["alpha_2"]
+        beta = self.model_params["beta"]
+        bias = self.model_params["bias"]
+        slope = self.model_params["slope"]
+        gamma = self.model_params["gamma"]
 
-        # Estimación de la fuente 1
         reconstructed_source1, mask_source1, predictions_1 = (
             self.filter(
-                reconstructed_source2, mixed_input, alpha_2,bias, slope
+                self.source2_estimation, self.mixed_input, alpha_2,bias, slope
             )
         )
+        self.source1_estimation = reconstructed_source1
+        self.mask1 = mask_source1
+        self.predictions1 = predictions_1 
         self.model_params["alpha_2"] = alpha_2 * beta
 
-
-        # Estimación de la fuente 2
+      
         reconstructed_source2, mask_source2, predictions_2 = (
             self.filter(
-                reconstructed_source1, mixed_input, alpha_1,bias, slope
+                self.source1_estimation, self.mixed_input, alpha_1,bias, slope
             
 
             )
         )
+
+        self.source2_estimation = reconstructed_source2
+        self.mask2 = mask_source2
+        self.predictions2 = predictions_2 
         self.model_params["alpha_1"] = alpha_1 * beta
 
         eps = 1e-6
@@ -82,14 +81,13 @@ class Crop2Norm(CropBaseModel):
         m1 = mask_source1 / mask_sum
         m2 = mask_source2 / mask_sum
 
-        reconstructed_source2 = tf.clip_by_value(2.0 * mixed_input * m2, 0.0, 1.0)
-        reconstructed_source1 = tf.clip_by_value(2.0 * mixed_input * m1, 0.0, 1.0)
+        reconstructed_source2 = tf.clip_by_value(2.0 * self.mixed_input * m2, 0.0, 1.0)
+        reconstructed_source1 = tf.clip_by_value(2.0 * self.mixed_input * m1, 0.0, 1.0)
         
-        return (
-            mask_source1,
-            mask_source2,
-            reconstructed_source1,
-            reconstructed_source2,
-            predictions_1,
-            predictions_2,
-        )
+        self.mask1 = mask_source1
+        self.mask2 = mask_source2
+        self.source1_estimation = reconstructed_source1
+        self.source2_estimation = reconstructed_source2
+        self.predictions1 = predictions_1
+        self.predictions2 = predictions_1
+

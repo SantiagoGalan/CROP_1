@@ -4,8 +4,8 @@ import tensorflow as tf
 
 
 class Graphics:
-    @classmethod
 
+    @classmethod
     def complete_plot(
         cls,
         mixed_input,
@@ -27,9 +27,6 @@ class Graphics:
         class_labels=None,
     ):
 
-        # -----------------------------
-        # 1. Construcción de la grilla
-        # -----------------------------
         reconstructed_mix = 0.5 * reconstructed_source1 + 0.5 * reconstructed_source2
         reconstructed_error =  reconstructed_mix - mixed_input 
 
@@ -74,9 +71,6 @@ class Graphics:
         if num_cols == 1:
             axes = np.expand_dims(axes, 1)
 
-        # -----------------------------
-        # 2. Dibujar las imágenes
-        # -----------------------------
         for row in range(num_rows):
             # Etiqueta de la fila
             ax_label = axes[row, 0]
@@ -94,9 +88,6 @@ class Graphics:
 
                 ax.imshow(img.numpy(), cmap="gray")
 
-                # -----------------------------
-                #     AÑADIR LABEL DE CLASE
-                # -----------------------------
                 if class_labels is not None:
 
                     label_text = None
@@ -151,8 +142,7 @@ class Graphics:
 
             param_text = " | ".join(param_parts)
 
-            fig.text(
-                0.5,
+            fig.text(0.5,
                 0.05,
                 param_text,
                 ha="center",
@@ -213,5 +203,15 @@ class Graphics:
 
 
 ######################################################################################
+################# Agregar gráficos que estan en "visualizaciones" ####################
 ######################################################################################
-######################################################################################
+    @classmethod
+    def reconstruction_by_condition(cls,recons):
+        plt.figure(figsize=(15, 2))
+        for i in range(10):
+            plt.subplot(1, 10, i + 1)
+            plt.imshow(recons[i].reshape(28, 28), cmap="gray")
+            plt.title(f"Clase {i}")
+            plt.axis("off")
+        plt.suptitle("Reconstrucciones bajo distintas condiciones")
+        plt.show()

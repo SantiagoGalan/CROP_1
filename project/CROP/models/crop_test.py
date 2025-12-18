@@ -14,9 +14,7 @@ class CropTest(CropBaseModel):
         x_mix_filter_1 = tf.convert_to_tensor(x_mix_filter_1)
 
         condition_encoder = self.predictor(x_mix_filter_1, verbose=0, training=False)
-        print("forma de las predicciones")
-        print(condition_encoder.shape)
-
+    
         condition_decoder_1 = condition_encoder
 
         encoded_imgs = self.cvae.encoder(
@@ -34,43 +32,29 @@ class CropTest(CropBaseModel):
         return (x_mix_filter_1, mask_source1, condition_encoder)
 
 
-    def decode(
-        self,
-        mixed_input,
-        reconstructed_source1,
-        reconstructed_source2,
-        params
-    ):
+    def decode(self):
 
-        mm1 = params["mm1"]
-        mm2 = params["mm2"]
-        rsm1 = params["rsm1"]
-        rsm2 = params["rsm2"]
-        # Estimación de la fuente 1
+        alpha_1 = self.model_params["alpha_1"]
+        alpha_2 = self.model_params["alpha_2"]
+        beta = self.model_params["beta"]
+        bias = self.model_params["bias"]
+
         reconstructed_source1, mask_source1, predictions_1 = (
             self.filter(
-                reconstructed_source2, mixed_input
+                self.source2_estimation, self.mixed_input
             )
         )
 
-        # Estimación de la fuente 2
         reconstructed_source2, mask_source2, predictions_2 = (
             self.filter(
-                reconstructed_source1, mixed_input
+                self.source1_estimation, self.mixed_input
             )
         )
-
         
-        mask_source1 = mask_source1 * mm1
-        mask_source2  = mask_source2 * mm2
-        reconstructed_source1 = reconstructed_source1 * rsm1
-        reconstructed_source2 = reconstructed_source2 * rsm2
+        self.mask_source1 = mask_source1 * alpha_1
+        self.mask_source2  = mask_source2 * alpha_2
+        self.source1_estimation = reconstructed_source1 * beta
+        self.source2_estimation = reconstructed_source2 * bias
+        self.predictions1 = predictions_1
+        self.predictions2 = predictions_2 
         
-        return (
-            mask_source1,
-            mask_source2,
-            reconstructed_source1,
-            reconstructed_source2,
-            predictions_1,
-            predictions_2,
-        )

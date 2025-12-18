@@ -1,7 +1,5 @@
 from project.CROP.models.crop_base_model import CropBaseModel
 from project.custom_layers.sampling import Sampling
-
-# from  crop_base_model import CropBaseModel
 import tensorflow as tf
 
 
@@ -88,4 +86,3 @@ class Crop2(CropBaseModel):
         self.source2_estimation = tf.clip_by_value(
             self.source2_estimation, clip_value_min=0, clip_value_max=1
         )
-

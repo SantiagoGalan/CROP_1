@@ -203,7 +203,7 @@ class CropBaseModel(ABC):
         source2_gt,
         source1_labels,
         source2_labels,
-        iterations=3,
+        iterations=10,
         show_image=False,
         show_metrics=True,
         save_path=None,
@@ -214,14 +214,14 @@ class CropBaseModel(ABC):
         # Mezclar parámetros por defecto + overrides
         self.model_params = {**self.model_params, **(params or {})}
 
-        # Mezcla inicial
+        # Mezcla 
         self.mix(source1_gt, source2_gt, self.model_params)
 
-        # Decodificación iterativa
+        # Decodificación 
         for _ in range(iterations):
             self.decode()
 
-        # Cálculo de métricas en un único lugar
+        # Cálculo de métricas
         metrics = self._compute_all_metrics(
             source1_gt, source2_gt, source1_labels, source2_labels
         )
@@ -251,7 +251,7 @@ class CropBaseModel(ABC):
                 class_labels=labels,
             )
 
-        # Mostrar tabla de parámetros y métricas
+        # Mostrar tabla
         if show_metrics:
             print("\n======= PARÁMETROS DEL MODELO =====================")
             self._print_named_table(self.model_params)
@@ -276,27 +276,26 @@ class CropBaseModel(ABC):
         name=None
     ):
 
-          # Mezclar parámetros por defecto + overrides
+        # seteo de parametros
         self.model_params = {**self.model_params, **(params or {})}
 
-        # Mezcla inicial
+        # Mezcla 
         self.mix(source1_gt, source2_gt, self.model_params)
 
         acc_at_least_one_plot = []
         acc_both_plot = []
 
-             # Decodificación iterativa
+             # Decodificación 
         for _ in range(iterations):
             self.decode()
             prediction1 = self.predictor.predict(self.source1_estimation,verbose=False)
             prediction2 = self.predictor.predict(self.source2_estimation,verbose=False)
             
-
+            #calculo acc es cada iteración para el grafico
             acc_at_least_one, acc_both = self.metrics_cal.accuracys(
                     gt1=source1_cond, gt2=source2_cond,
                     p1=prediction1, p2=prediction2
                 )
-
 
 
             acc_at_least_one_plot.append(acc_at_least_one)
@@ -308,3 +307,20 @@ class CropBaseModel(ABC):
             "acc_at_least_one_plot": acc_at_least_one_plot,
             "acc_both_plot": acc_both_plot,
         }
+    
+    def reconstruction_by_condition(self,x_input):
+        """
+        Muestra cómo se reconstruye una imagen de entrada bajo las 10 condiciones posibles (0 a 9).
+        """
+        x_input = np.expand_dims(x_input, axis=0)
+
+        x_repeated = np.repeat(x_input, repeats=10, axis=0)
+
+        one_hot_conditions = np.eye(10)  # I(10, 10)
+
+        z_mean, z_log_var, z = self.cvae.encoder.predict([x_repeated, one_hot_conditions])
+
+        recons = self.cvae.decoder.predict([z, one_hot_conditions])
+        
+        Graphics.reconstruction_by_condition(recons)
+

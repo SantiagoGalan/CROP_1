@@ -4,8 +4,8 @@ from project.custom_layers.sampling import Sampling
 
 class Crop2GammaNorm(CropBaseModel):
 
+    
     def filter(self, filter_1, mixed_input, alpha,bias,slope): 
-        #best_filtered_var_sigmoid
 
         x_mix_filter_1 = 2 * mixed_input - filter_1
         x_mix_filter_1 = tf.clip_by_value(
@@ -67,10 +67,9 @@ class Crop2GammaNorm(CropBaseModel):
         )
 
          
-
         reconstructed_source2, mask_source2, predictions_2 = (
             self.filter(
-                reconstructed_source1, self.mixed_input, alpha_1,bias,slope
+                self.source1_estimation, self.mixed_input, alpha_1,bias,slope
             )
         )
         
@@ -86,21 +85,11 @@ class Crop2GammaNorm(CropBaseModel):
 
         self.source2_estimation = tf.clip_by_value(
             self.source2_estimation, clip_value_min=0, clip_value_max=1
-        )#norm
+        )
         eps = 1e-6
         mask_sum = tf.maximum(mask_source1 + mask_source2, eps)
         m1 = mask_source1 / mask_sum
         m2 = mask_source2 / mask_sum
 
-        reconstructed_source2 = tf.clip_by_value(2.0 * self.mixed_input * m2, 0.0, 1.0)
-        reconstructed_source1 = tf.clip_by_value(2.0 * self.mixed_input * m1, 0.0, 1.0)
-
-        return (
-            mask_source1,
-            mask_source2,
-            reconstructed_source1,
-            reconstructed_source2,
-            predictions_1,
-            predictions_2,
-        )
-   
+        self.source2_estimation =  tf.clip_by_value(2.0 * self.mixed_input * m2, 0.0, 1.0)
+        self.source1_estimation =  tf.clip_by_value(2.0 * self.mixed_input * m1, 0.0, 1.0)

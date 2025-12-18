@@ -6,8 +6,6 @@ class Crop1(CropBaseModel):
 
 
     def filter(self, filter_1, mixed_input, alpha,bias,slope):
-        # def filter(self, x_mix_filter_2, mixed_input, alpha):
-        # First decoded image --------------------------------------------------------------
         x_mix_filter_1 = 2 * mixed_input - filter_1
         x_mix_filter_1 = tf.clip_by_value(
             x_mix_filter_1, clip_value_min=0, clip_value_max=1
@@ -45,6 +43,7 @@ class Crop1(CropBaseModel):
         beta = self.model_params["beta"]
         bias = self.model_params["bias"]
         slope = self.model_params["slope"]
+        
         # Estimación de la fuente 1
         reconstructed_source1, mask_source1, predictions_1 = (
             self.filter(self.source2_estimation, self.mixed_input, alpha_2,bias,slope)

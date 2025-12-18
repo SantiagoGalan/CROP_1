@@ -7,10 +7,6 @@ class Sampling(Layer):
     batch = tf.shape(z_mean)[0]                                                 
     dim = tf.shape(z_mean)[1]                                                
     #epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
-    epsilon = tf.random.stateless_normal(
-    shape=tf.shape(z_mean),
-    seed=[SEED, 0]
-)
-
+    epsilon = tf.random.stateless_normal(shape=tf.shape(z_mean),seed=[SEED, 0]) # esto y la semilla anula el sampleo aleatorio. 
     return z_mean + tf.keras.backend.exp(0.5 * z_log_var) * epsilon
 
