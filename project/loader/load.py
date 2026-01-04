@@ -32,7 +32,10 @@ def data(dataset):
     return get_mnist_data(dataset=dataset)
 
 
-def predictor(dataset):
+def predictor(dataset): ## cambiar para que sea mas flexible 
+    if dataset=="early_stop_fashion":
+        model_path = os.path.join(COMMON_PATH, "predictores", "early_stop_fashion.keras")
+        return load_model(model_path, {"ReshapeLayer": ReshapeLayer})
     model_path = os.path.join(COMMON_PATH, "predictores", f"CCE_Conv2D_{dataset}.keras")
     return load_model(model_path, {"ReshapeLayer": ReshapeLayer})
 
