@@ -39,6 +39,14 @@ def predictor(dataset): ## cambiar para que sea mas flexible
     model_path = os.path.join(COMMON_PATH, "predictores", f"CCE_Conv2D_{dataset}.keras")
     return load_model(model_path, {"ReshapeLayer": ReshapeLayer})
 
+
+
+def parse_dims_from_key(key):
+    parts = key.split("_")
+    if len(parts) < 4 or parts[1] != "lat":
+        raise ValueError(f"Formato de key inválido: {key}")
+    return parts[0], parts[2]
+
 def all_models(dataset):
     import os
     from keras.models import load_model
@@ -68,20 +76,30 @@ def all_models(dataset):
 
     common_keys = sorted(set(encoders.keys()) & set(decoders.keys()))
     print(f"Encontrados {len(common_keys)} pares de modelos.")
-
     models = []
 
     for key in common_keys:
+        print("############")
+        print(key)
+        print("############")
         encoder_path = encoders[key]
         decoder_path = decoders[key]
 
         encoder = load_model(encoder_path, custom_objects={"Sampling": Sampling})
         decoder = load_model(decoder_path)
 
-        name = f"cvae_{key}"
+        int_dim, lat_dim = parse_dims_from_key(key)
 
-        cvae = CVAE(encoder, decoder, original_dim=28*28, name=name)
+        name = f"cvae_int_{int_dim}_lat_{lat_dim}"
+
+        cvae = CVAE(
+            encoder,
+            decoder,
+            original_dim=28*28,
+            name=name
+        )
         cvae.compile(optimizer="adam")
 
         models.append(cvae)
+
     return models
