@@ -79,9 +79,6 @@ def all_models(dataset):
     models = []
 
     for key in common_keys:
-        print("############")
-        print(key)
-        print("############")
         encoder_path = encoders[key]
         decoder_path = decoders[key]
 
