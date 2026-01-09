@@ -40,14 +40,17 @@ def predictor(dataset): ## cambiar para que sea mas flexible
     return load_model(model_path, {"ReshapeLayer": ReshapeLayer})
 
 
-
 def parse_dims_from_key(key):
     parts = key.split("_")
     if len(parts) < 4 or parts[1] != "lat":
         raise ValueError(f"Formato de key inválido: {key}")
-    return parts[0], parts[2]
 
-def all_models(dataset):
+    int_dim = int(parts[0])
+    lat_dim = int(parts[2])
+
+    return int_dim, lat_dim
+
+def all_models(dataset, lat=None, inter=None):
     import os
     from keras.models import load_model
     from project.custom_layers.sampling import Sampling
@@ -75,10 +78,29 @@ def all_models(dataset):
     }
 
     common_keys = sorted(set(encoders.keys()) & set(decoders.keys()))
-    print(f"Encontrados {len(common_keys)} pares de modelos.")
+
+    # ---- FILTRADO POR inter / lat ----
+    filtered_keys = []
+    for key in common_keys:
+        int_dim, lat_dim = parse_dims_from_key(key)
+
+        if inter is not None and int_dim != inter:
+            continue
+        if lat is not None and lat_dim != lat:
+            continue
+
+        filtered_keys.append(key)
+
+    if inter is not None and lat is not None and not filtered_keys:
+        raise ValueError(
+            f"No existe ningún modelo con inter={inter} y lat={lat} para dataset '{dataset}'"
+        )
+
+    print(f"Encontrados {len(filtered_keys)} pares de modelos.")
     models = []
 
-    for key in common_keys:
+    for key in filtered_keys:
+        
         encoder_path = encoders[key]
         decoder_path = decoders[key]
 
