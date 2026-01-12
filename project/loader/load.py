@@ -14,6 +14,39 @@ COMMON_PATH = os.path.abspath(
 )
 
 
+def encoder(lat=None, inter=None, dataset=None, name=None):
+    if name is not None:
+        encoder_path = os.path.join(
+            COMMON_PATH, "encoders", f"{name}.keras"
+        )
+    else:
+        encoder_path = os.path.join(
+            COMMON_PATH,
+            "encoders",
+            f"en_int_{inter}_lat_{lat}_{dataset}.keras"
+        )
+
+    return load_model(
+        encoder_path,
+        custom_objects={"Sampling": Sampling},
+    )
+
+
+def decoder(lat=None, inter=None, dataset=None, name=None):
+    if name is not None:
+        decoder_path = os.path.join(
+            COMMON_PATH, "decoders", f"{name}.keras"
+        )
+    else:
+        decoder_path = os.path.join(
+            COMMON_PATH,
+            "decoders",
+            f"de_int_{inter}_lat_{lat}_{dataset}.keras"
+        )
+
+    return load_model(decoder_path)
+
+
 def cvae(lat, inter, dataset):
     encoder_path = os.path.join(COMMON_PATH, "encoders", f"en_int_{inter}_lat_{lat}_{dataset}.keras")
     decoder_path = os.path.join(COMMON_PATH, "decoders", f"de_int_{inter}_lat_{lat}_{dataset}.keras")

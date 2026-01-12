@@ -158,7 +158,7 @@ def latent_space_umap(cvae, dataset, max_samples=2000, save_path=None, title="")
             labels = np.expand_dims(labels, axis=0)
         z_mean, _, z = cvae.encoder.predict([batch, labels], verbose=0)
         z_input = np.concatenate([z, labels], axis=1)
-        z_all.append(z_input)
+        z_all.append(z)
         y_all.append(labels)
         count += len(batch)
         if count >= max_samples:
