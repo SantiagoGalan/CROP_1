@@ -4,3 +4,4 @@ numpy==2.4.1
 scikit_learn==1.8.0
 tensorflow==2.20.0
 optuna
+umap
