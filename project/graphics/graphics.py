@@ -189,7 +189,7 @@ class Graphics:
     def acc_plot(cls,acc_at_least_one_plot,acc_both_plot,plot_name=None):
     
         #plt.plot(acc_at_least_one_plot, label=f"al menos uno ( {acc_at_least_one_plot[-1] } )")
-        plt.plot(acc_both_plot, label=f"ambos ({np.max(acc_both_plot)})")
+        plt.plot(acc_both_plot, label=f"ambos max: ({np.max(acc_both_plot)})")
         plt.grid()
         plt.title("Accuracy")
         plt.xlabel("iterations")
