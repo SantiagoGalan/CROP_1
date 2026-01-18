@@ -8,7 +8,6 @@ def build_enconder(img_dim=(28,28),condition_dim=(10,),intermediate_dim=128,late
     
     img_input = Input(shape=(flat_dim,), name="img_input_encoder")
     cond_encoder = Input(shape=(condition_dim), name="encoder_condition")
-
     imputs_cocanteados = Concatenate()([img_input, cond_encoder])
     
     x = Dense(intermediate_dim, activation="relu")(imputs_cocanteados)
