@@ -105,13 +105,41 @@ def data(dataset):
     return get_mnist_data(dataset=dataset)
 
 
-def predictor(dataset): ## cambiar para que sea mas flexible 
-    if dataset=="early_stop_fashion":
-        model_path = os.path.join(COMMON_PATH, "predictores", "early_stop_fashion.keras")
-        return load_model(model_path, {"ReshapeLayer": ReshapeLayer})
-    model_path = os.path.join(COMMON_PATH, "predictores", f"CCE_Conv2D_{dataset}.keras")
-    return load_model(model_path, {"ReshapeLayer": ReshapeLayer})
+def predictor(
+    dataset=None,
+    model_name=None,
+    model_path=None,
+):
+    """
+    Carga un modelo predictor a partir de:
+    - dataset (modo original),
+    - model_name (nombre del archivo .keras),
+    - model_path (ruta absoluta o relativa).
+    """
 
+    pred_dir = os.path.join(COMMON_PATH, "predictores")
+
+    # Caso 1: ruta directa
+    if model_path is not None:
+        path = model_path
+
+    # Caso 2: nombre explícito del modelo
+    elif model_name is not None:
+        path = os.path.join(pred_dir, model_name)
+
+    # Caso 3: comportamiento original por dataset
+    elif dataset is not None:
+        if dataset == "early_stop_fashion":
+            path = os.path.join(pred_dir, "early_stop_fashion.keras")
+        else:
+            path = os.path.join(pred_dir, f"CCE_Conv2D_{dataset}.keras")
+
+    else:
+        raise ValueError(
+            "Debes pasar dataset, model_name o model_path"
+        )
+
+    return load_model(path, custom_objects={"ReshapeLayer": ReshapeLayer})
 
 def parse_dims_from_key(key):
     parts = key.split("_")
