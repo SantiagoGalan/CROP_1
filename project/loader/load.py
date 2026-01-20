@@ -47,9 +47,50 @@ def decoder(lat=None, inter=None, dataset=None, name=None):
     return load_model(decoder_path)
 
 
-def cvae(lat, inter, dataset):
-    encoder_path = os.path.join(COMMON_PATH, "encoders", f"en_int_{inter}_lat_{lat}_{dataset}.keras")
-    decoder_path = os.path.join(COMMON_PATH, "decoders", f"de_int_{inter}_lat_{lat}_{dataset}.keras")
+
+def cvae(
+    lat=None,
+    inter=None,
+    dataset=None,
+    encoder_name=None,
+    decoder_name=None,
+    model_name=None,
+):
+
+
+    enc_dir = os.path.join(COMMON_PATH, "encoders")
+    dec_dir = os.path.join(COMMON_PATH, "decoders")
+
+    # Caso 1: se pasa un nombre base común
+    if model_name is not None:
+        if model_name.startswith("en_") or model_name.startswith("de_"):
+            raise ValueError(
+                "model_name debe ser el nombre base SIN 'en_' ni 'de_'"
+            )
+
+        encoder_name = f"en_{model_name}"
+        decoder_name = f"de_{model_name}"
+
+    # Caso 2: se pasan nombres explícitos
+    if encoder_name is not None and decoder_name is not None:
+        encoder_path = os.path.join(enc_dir, encoder_name)
+        decoder_path = os.path.join(dec_dir, decoder_name)
+
+    # Caso 3: modo original (lat, inter, dataset)
+    elif lat is not None and inter is not None and dataset is not None:
+        encoder_path = os.path.join(
+            enc_dir, f"en_int_{inter}_lat_{lat}_{dataset}.keras"
+        )
+        decoder_path = os.path.join(
+            dec_dir, f"de_int_{inter}_lat_{lat}_{dataset}.keras"
+        )
+
+    else:
+        raise ValueError(
+            "Debes pasar (lat, inter, dataset) "
+            "o (encoder_name y decoder_name) "
+            "o model_name"
+        )
 
     encoder = load_model(
         encoder_path,
@@ -57,8 +98,7 @@ def cvae(lat, inter, dataset):
     )
     decoder = load_model(decoder_path)
 
-    return CVAE(encoder, decoder,original_dim=28*28)
-
+    return CVAE(encoder, decoder, original_dim=28 * 28)
 
 
 def data(dataset):
