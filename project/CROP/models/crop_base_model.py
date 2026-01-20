@@ -2,7 +2,7 @@ import numpy as np
 from project.graphics.graphics import Graphics
 from project.metrics.metrics import Metrics
 from abc import abstractmethod, ABC
-
+from project.loader import load
 
 """
 x_mix_orig → mixed_input
@@ -46,12 +46,40 @@ class CropBaseModel(ABC):
     y definir las funciones filter y decode.
     
     """
-    def __init__(self, cvae, predictor):
+    def __init__(
+        self,
+        predictor,
+        cvae=None,
+        *,
+        lat=None,
+        inter=None,
+        dataset=None,
+        cvae_name=None,
+    ):
 
-        #auto enconder
-        self.cvae = cvae
-        #predictor
         self.predictor = predictor
+
+        # Caso 1: CVAE ya cargado
+        if cvae is not None:
+            self.cvae = cvae
+
+        # Caso 2: nombre base del CVAE
+        elif cvae_name is not None:
+            self.cvae = load.cvae(model_name=cvae_name)
+
+        # Caso 3: parámetros clásicos
+        elif lat is not None and inter is not None and dataset is not None:
+            self.cvae = load.cvae(
+                lat=lat,
+                inter=inter,
+                dataset=dataset,
+            )
+
+        else:
+            raise ValueError(
+                "Debes pasar un cvae, cvae_name o (lat, inter, dataset)"
+            )
+
         #parametos por defecto
         self.default_params = {
             "alpha_1": -2,
@@ -62,7 +90,7 @@ class CropBaseModel(ABC):
             "alpha_mix": 0.5,
             "beta": 1,
         }
-        self.name = cvae.name
+        self.name = self.cvae.name
         self.model_params = self.default_params
         #modulos de calculos/graficos
         self.graphicator = Graphics
