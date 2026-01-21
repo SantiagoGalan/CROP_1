@@ -186,17 +186,49 @@ class Graphics:
         plt.show()
 
     @classmethod
-    def acc_plot(cls,acc_at_least_one_plot,acc_both_plot,plot_name=None):
-    
-        #plt.plot(acc_at_least_one_plot, label=f"al menos uno ( {acc_at_least_one_plot[-1] } )")
-        plt.plot(acc_both_plot, label=f"ambos max: ({np.max(acc_both_plot)})")
-        plt.grid()
-        plt.title("Accuracy")
-        plt.xlabel("iterations")
-        plt.ylabel("acc")
-        plt.legend()
+    def acc_plot(
+    cls,
+    acc_at_least_one_plot,
+    acc_both_plot,
+    plot_name=None,
+    params=None,
+):
+        fig, ax = plt.subplots()
+
+        ax.plot(
+            acc_both_plot,
+            label=f"ambos max: ({np.max(acc_both_plot):.3f})"
+        )
+
+        ax.grid()
+        ax.set_title("Accuracy")
+        ax.set_xlabel("iterations")
+        ax.set_ylabel("acc")
+        ax.legend()
+
+        # 🔹 Texto de parámetros debajo del plot
+        if params is not None:
+            text = " | ".join(
+                f"{k}: {v:.3f}" if isinstance(v, (int, float)) else f"{k}: {v}"
+                for k, v in params.items()
+            )
+
+            # Dejar espacio abajo
+            plt.subplots_adjust(bottom=0.25)
+
+            fig.text(
+                0.5,
+                0.12,
+                text,
+                ha="center",
+                va="center",
+                fontsize=9,
+                wrap=True,
+            )
+
         if plot_name:
-            plt.savefig(f"{plot_name}.png")
+            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+
         plt.show()
 
 

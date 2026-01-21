@@ -329,7 +329,7 @@ class CropBaseModel(ABC):
             acc_at_least_one_plot.append(acc_at_least_one)
             acc_both_plot.append(acc_both)
 
-        self.graphicator.acc_plot(acc_at_least_one_plot,acc_both_plot,name)
+        self.graphicator.acc_plot(acc_at_least_one_plot,acc_both_plot,name,params=params)
       
         return {
             "acc_at_least_one_plot": acc_at_least_one_plot,
