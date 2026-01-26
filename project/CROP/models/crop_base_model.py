@@ -336,6 +336,85 @@ class CropBaseModel(ABC):
             "acc_both_plot": acc_both_plot,
         }
     
+
+    def psnr_curve(
+            self,
+            source1_gt,
+            source2_gt,
+            source1_cond,
+            source2_cond,
+            iterations=3,
+            params=None,
+            name=None
+        ):
+
+        # seteo de parametros
+        self.model_params = {**self.model_params, **(params or {})}
+
+        # Mezcla 
+        self.mix(source1_gt, source2_gt, self.model_params)
+
+        psnr_mean_resuts = []
+        psnr_std_resuts = []
+
+             # Decodificación 
+        for _ in range(iterations):
+            self.decode()
+            psnr_mean, psnr_std = self.metrics_cal.batched_psnr(
+                    gt1=source1_gt, gt2=source2_gt,
+                    gen1=self.source1_estimation, gen2=self.source1_estimation
+                )
+
+            psnr_mean_resuts.append(psnr_mean)
+            psnr_std_resuts.append(psnr_std)
+
+        #self.graphicator.acc_plot(psnr_mean,psnr_std,name,params=params)
+      
+        return {
+            "psnr_mean": psnr_mean_resuts,
+            "psnr_std": psnr_std_resuts,
+        }
+    
+
+    def ssim_curve(
+            self,
+            source1_gt,
+            source2_gt,
+            source1_cond,
+            source2_cond,
+            iterations=3,
+            params=None,
+            name=None
+        ):
+
+        # seteo de parametros
+        self.model_params = {**self.model_params, **(params or {})}
+
+        # Mezcla 
+        self.mix(source1_gt, source2_gt, self.model_params)
+
+        ssim_mean_resuts = []
+        ssim_std_resuts = []
+
+             # Decodificación 
+        for _ in range(iterations):
+            self.decode()
+            ssim_mean, ssim_std = self.metrics_cal.batched_ssim(
+                    gt1=source1_gt, gt2=source2_gt,
+                    gen1=self.source1_estimation, gen2=self.source1_estimation
+                )
+
+            ssim_mean_resuts.append(ssim_mean)
+            ssim_std_resuts.append(ssim_std)
+
+        #self.graphicator.acc_plot(ssim_mean,ssim_std,name,params=params)
+      
+        return {
+            "ssim_mean": ssim_mean_resuts,
+            "ssim_std": ssim_std_resuts,
+        }
+    
+    
     def reconstruction_by_condition(self,x_input):
         """
         Muestra cómo se reconstruye una imagen de entrada bajo las 10 condiciones posibles (0 a 9).
