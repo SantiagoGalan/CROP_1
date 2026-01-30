@@ -4,33 +4,42 @@ import matplotlib.pyplot as plt
 
 def condiciones(cvae, x_input):
     """
-    Muestra cómo se reconstruye una imagen de entrada bajo las 10 condiciones posibles (0 a 9).
+    Muestra cómo se reconstruye una imagen de entrada
+    bajo las 10 condiciones posibles (0 a 9),
+    incluyendo la imagen original a la izquierda.
     """
 
-    # Asegurar que x_input tenga batch dimension
-    # if x_input.shape == (28, 28):
+    # Asegurar batch dimension
     x_input = np.expand_dims(x_input, axis=0)
 
     # Repetir la imagen 10 veces
     x_repeated = np.repeat(x_input, repeats=10, axis=0)
 
-    # Crear las 10 condiciones one-hot
-    condiciones = np.eye(10)  # (10, 10)
+    # Condiciones one-hot
+    condiciones = np.eye(10)
 
-    # Codificar
+    # Codificar y reconstruir
     z_mean, z_log_var, z = cvae.encoder.predict([x_repeated, condiciones])
-
-    # Reconstruir
     reconstrucciones = cvae.decoder.predict([z, condiciones])
 
     # Mostrar
-    plt.figure(figsize=(15, 2))
+    plt.figure(figsize=(18, 2.5))
+
+    # 🔹 Imagen original
+    plt.subplot(1, 11, 1)
+    plt.imshow(x_input[0].reshape(28, 28), cmap="gray")
+    plt.title("Original")
+    plt.axis("off")
+
+    # 🔹 Reconstrucciones
     for i in range(10):
-        plt.subplot(1, 10, i + 1)
+        plt.subplot(1, 11, i + 2)
         plt.imshow(reconstrucciones[i].reshape(28, 28), cmap="gray")
         plt.title(f"Clase {i}")
         plt.axis("off")
-    plt.suptitle("Reconstrucciones bajo distintas condiciones")
+
+    plt.suptitle("Reconstrucciones bajo distintas condiciones", y=1.05)
+    plt.tight_layout()
     plt.show()
 
 
