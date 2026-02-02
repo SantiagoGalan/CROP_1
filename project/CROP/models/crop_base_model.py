@@ -274,7 +274,7 @@ class CropBaseModel(ABC):
                 metrics["best_prediction_source1"],
                 model_params=self.model_params,
                 metrics=metrics,
-                title=f"Modelo: {self.name}",
+                #title=f"Modelo: {self.name}",
                 save_path=save_path,
                 class_labels=labels,
             )
