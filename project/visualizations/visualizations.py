@@ -4,33 +4,42 @@ import matplotlib.pyplot as plt
 
 def condiciones(cvae, x_input):
     """
-    Muestra cómo se reconstruye una imagen de entrada bajo las 10 condiciones posibles (0 a 9).
+    Muestra cómo se reconstruye una imagen de entrada
+    bajo las 10 condiciones posibles (0 a 9),
+    incluyendo la imagen original a la izquierda.
     """
 
-    # Asegurar que x_input tenga batch dimension
-    # if x_input.shape == (28, 28):
+    # Asegurar batch dimension
     x_input = np.expand_dims(x_input, axis=0)
 
     # Repetir la imagen 10 veces
     x_repeated = np.repeat(x_input, repeats=10, axis=0)
 
-    # Crear las 10 condiciones one-hot
-    condiciones = np.eye(10)  # (10, 10)
+    # Condiciones one-hot
+    condiciones = np.eye(10)
 
-    # Codificar
+    # Codificar y reconstruir
     z_mean, z_log_var, z = cvae.encoder.predict([x_repeated, condiciones])
-
-    # Reconstruir
     reconstrucciones = cvae.decoder.predict([z, condiciones])
 
     # Mostrar
-    plt.figure(figsize=(15, 2))
+    plt.figure(figsize=(18, 2.5))
+
+    # 🔹 Imagen original
+    plt.subplot(1, 11, 1)
+    plt.imshow(x_input[0].reshape(28, 28), cmap="gray")
+    plt.title("Original")
+    plt.axis("off")
+
+    # 🔹 Reconstrucciones
     for i in range(10):
-        plt.subplot(1, 10, i + 1)
+        plt.subplot(1, 11, i + 2)
         plt.imshow(reconstrucciones[i].reshape(28, 28), cmap="gray")
         plt.title(f"Clase {i}")
         plt.axis("off")
-    plt.suptitle("Reconstrucciones bajo distintas condiciones")
+
+    plt.suptitle("Reconstrucciones bajo distintas condiciones", y=1.05)
+    plt.tight_layout()
     plt.show()
 
 
@@ -139,27 +148,41 @@ def latent_space_tsne(cvae, dataset, max_samples=10000, save_path=None):
         plt.savefig(save_path, dpi=300, bbox_inches="tight")
     plt.show()
 
-
-def latent_space_umap(cvae, dataset, max_samples=2000, save_path=None, title=""):
-    import matplotlib.pyplot as plt
+def latent_space_umap(
+    cvae,
+    dataset,
+    max_samples=2000,
+    save_path=None,
+    title="",
+    label_names=None
+):
     import numpy as np
+    import matplotlib.pyplot as plt
     import umap
+    from matplotlib.colors import ListedColormap, BoundaryNorm
 
     z_all = []
     y_all = []
     count = 0
 
+    # -----------------------------
+    # Obtención de representaciones latentes
+    # -----------------------------
     for (batch, labels), _ in dataset:
         batch = np.array(batch)
         labels = np.array(labels)
+
         if batch.ndim == 1:
             batch = np.expand_dims(batch, axis=0)
         if labels.ndim == 1:
             labels = np.expand_dims(labels, axis=0)
+
+        # Encoder condicional
         z_mean, _, z = cvae.encoder.predict([batch, labels], verbose=0)
-        z_input = np.concatenate([z, labels], axis=1)
-        z_all.append(z_input)
+
+        z_all.append(z)
         y_all.append(labels)
+
         count += len(batch)
         if count >= max_samples:
             break
@@ -167,19 +190,49 @@ def latent_space_umap(cvae, dataset, max_samples=2000, save_path=None, title="")
     z_all = np.concatenate(z_all, axis=0)[:max_samples]
     y_all = np.argmax(np.concatenate(y_all, axis=0)[:max_samples], axis=1)
 
+    n_classes = len(label_names)
+
+    # -----------------------------
+    # UMAP
+    # -----------------------------
     reducer = umap.UMAP(n_components=2, random_state=42)
     z_umap = reducer.fit_transform(z_all)
 
+    # -----------------------------
+    # Colormap discreto con labels centrados
+    # -----------------------------
+    cmap = ListedColormap(plt.cm.tab10.colors[:n_classes])
+    boundaries = np.arange(-0.5, n_classes + 0.5, 1)
+    norm = BoundaryNorm(boundaries, cmap.N)
+
+    # -----------------------------
+    # Plot
+    # -----------------------------
     plt.figure(figsize=(8, 6))
-    plt.scatter(z_umap[:, 0], z_umap[:, 1], c=y_all, cmap="tab10", alpha=0.5, s=5)
-    plt.colorbar(label="Etiqueta")
+    sc = plt.scatter(
+        z_umap[:, 0],
+        z_umap[:, 1],
+        c=y_all,
+        cmap=cmap,
+        norm=norm,
+        s=6,
+        alpha=0.6
+    )
+
+    cbar = plt.colorbar(sc, ticks=np.arange(n_classes))
+    cbar.set_ticklabels(label_names)
+    cbar.set_label("Etiqueta")
+
     plt.xlabel("UMAP [0]")
     plt.ylabel("UMAP [1]")
     plt.title(f"Espacio latente con UMAP {title}")
+
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches="tight")
+
     plt.show()
     plt.close()
+
 
 
 def variantes_punto_fijo(cvae, z_fixed=None, num_puntos=5):
