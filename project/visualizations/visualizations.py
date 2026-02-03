@@ -249,27 +249,24 @@ def variantes_punto_fijo(cvae, z_fixed=None, num_puntos=5):
     else:
         num_puntos = z_fixed.shape[0]
     
-    # Crear figura
     fig, axes = plt.subplots(num_puntos, 10, figsize=(20, 2*num_puntos))
+    axes = np.atleast_2d(axes)
     fig.suptitle('Diferentes dígitos generados desde puntos latentes fijos', fontsize=16)
-    
-    # Para cada punto latente
+
     for i in range(num_puntos):
-        z = np.tile(z_fixed[i:i+1], (10, 1))  # Repetir el punto para cada clase
-        conditions = np.eye(10)  # One-hot para cada dígito
-        
-        # Generar imágenes
+        z = np.tile(z_fixed[i:i+1], (10, 1))
+        conditions = np.eye(10)
+
         imgs_generadas = cvae.decoder.predict([z, conditions], verbose=0)
-        
-        # Mostrar resultados
+
         for j in range(10):
             ax = axes[i, j]
             ax.imshow(imgs_generadas[j].reshape(28, 28), cmap='gray')
             ax.axis('off')
-            if i == 0:  # Títulos solo en la primera fila
+            if i == 0:
                 ax.set_title(f'Dígito {j}')
-        if num_puntos > 1:  # Etiquetas en el eje Y
-            axes[i, 0].set_ylabel(f'Punto {i+1}')
+
+        axes[i, 0].set_ylabel(f'Punto {i+1}')
     
     plt.tight_layout()
     plt.show()

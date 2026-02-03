@@ -141,6 +141,7 @@ def predictor(
 
     return load_model(path, custom_objects={"ReshapeLayer": ReshapeLayer})
 
+
 def parse_dims_from_key(key):
     parts = key.split("_")
     if len(parts) < 4 or parts[1] != "lat":
@@ -200,8 +201,7 @@ def all_models(dataset, lat=None, inter=None):
     print(f"Encontrados {len(filtered_keys)} pares de modelos.")
     models = []
 
-    for key in filtered_keys:
-        
+    for key in common_keys:
         encoder_path = encoders[key]
         decoder_path = decoders[key]
 
