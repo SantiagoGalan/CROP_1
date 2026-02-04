@@ -2,7 +2,7 @@ import numpy as np
 from project.graphics.graphics import Graphics
 from project.metrics.metrics import Metrics
 from abc import abstractmethod, ABC
-from project.loader import load
+from project.loader import Loader
 
 """
 x_mix_orig → mixed_input
@@ -65,11 +65,11 @@ class CropBaseModel(ABC):
 
         # Caso 2: nombre base del CVAE
         elif cvae_name is not None:
-            self.cvae = load.cvae(model_name=cvae_name)
+            self.cvae = Loader.cvae(model_name=cvae_name)
 
         # Caso 3: parámetros clásicos
         elif lat is not None and inter is not None and dataset is not None:
-            self.cvae = load.cvae(
+            self.cvae = Loader.cvae(
                 lat=lat,
                 inter=inter,
                 dataset=dataset,
