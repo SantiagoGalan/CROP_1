@@ -1,225 +1,188 @@
 import os
-import os
 from keras.models import load_model
+
 from project.custom_layers.sampling import Sampling
 from project.custom_layers.reshapeLayer import ReshapeLayer
 from project.data.get_data import get_mnist_data
 from project.models_definitions.cvae import CVAE
 
-BASE_DIR = os.path.dirname(__file__)          # project/trained_models/
-COMMON_PATH = "project/trained_models/"
 
-COMMON_PATH = os.path.abspath(
-    os.path.join(BASE_DIR, "..", "trained_models")
-)
+class Loader:
+    # ---------- paths (class-level) ----------
 
-
-def encoder(lat=None, inter=None, dataset=None, name=None):
-    if name is not None:
-        encoder_path = os.path.join(
-            COMMON_PATH, "encoders", f"{name}.keras"
-        )
-    else:
-        encoder_path = os.path.join(
-            COMMON_PATH,
-            "encoders",
-            f"en_int_{inter}_lat_{lat}_{dataset}.keras"
-        )
-
-    return load_model(
-        encoder_path,
-        custom_objects={"Sampling": Sampling},
+    BASE_DIR = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "trained_models")
     )
 
+    ENCODERS_DIR = os.path.join(BASE_DIR, "encoders")
+    DECODERS_DIR = os.path.join(BASE_DIR, "decoders")
+    PREDICTORS_DIR = os.path.join(BASE_DIR, "predictores")
 
-def decoder(lat=None, inter=None, dataset=None, name=None):
-    if name is not None:
-        decoder_path = os.path.join(
-            COMMON_PATH, "decoders", f"{name}.keras"
-        )
-    else:
-        decoder_path = os.path.join(
-            COMMON_PATH,
-            "decoders",
-            f"de_int_{inter}_lat_{lat}_{dataset}.keras"
-        )
+    # ---------- basic loaders ----------
 
-    return load_model(decoder_path)
-
-
-
-def cvae(
-    lat=None,
-    inter=None,
-    dataset=None,
-    encoder_name=None,
-    decoder_name=None,
-    model_name=None,
-):
-
-
-    enc_dir = os.path.join(COMMON_PATH, "encoders")
-    dec_dir = os.path.join(COMMON_PATH, "decoders")
-
-    # Caso 1: se pasa un nombre base común
-    if model_name is not None:
-        if model_name.startswith("en_") or model_name.startswith("de_"):
-            raise ValueError(
-                "model_name debe ser el nombre base SIN 'en_' ni 'de_'"
+    @classmethod
+    def encoder(cls, lat=None, inter=None, dataset=None, name=None):
+        if name is not None:
+            path = os.path.join(cls.ENCODERS_DIR, f"{name}.keras")
+        else:
+            path = os.path.join(
+                cls.ENCODERS_DIR,
+                f"en_int_{inter}_lat_{lat}_{dataset}.keras"
             )
 
-        encoder_name = f"en_{model_name}"
-        decoder_name = f"de_{model_name}"
+        return load_model(path, custom_objects={"Sampling": Sampling})
 
-    # Caso 2: se pasan nombres explícitos
-    if encoder_name is not None and decoder_name is not None:
-        encoder_path = os.path.join(enc_dir, encoder_name)
-        decoder_path = os.path.join(dec_dir, decoder_name)
-
-    # Caso 3: modo original (lat, inter, dataset)
-    elif lat is not None and inter is not None and dataset is not None:
-        encoder_path = os.path.join(
-            enc_dir, f"en_int_{inter}_lat_{lat}_{dataset}.keras"
-        )
-        decoder_path = os.path.join(
-            dec_dir, f"de_int_{inter}_lat_{lat}_{dataset}.keras"
-        )
-
-    else:
-        raise ValueError(
-            "Debes pasar (lat, inter, dataset) "
-            "o (encoder_name y decoder_name) "
-            "o model_name"
-        )
-
-    encoder = load_model(
-        encoder_path,
-        custom_objects={"Sampling": Sampling},
-    )
-    decoder = load_model(decoder_path)
-
-    return CVAE(encoder, decoder, original_dim=28 * 28)
-
-
-def data(dataset):
-    return get_mnist_data(dataset=dataset)
-
-
-def predictor(
-    dataset=None,
-    model_name=None,
-    model_path=None,
-):
-    """
-    Carga un modelo predictor a partir de:
-    - dataset (modo original),
-    - model_name (nombre del archivo .keras),
-    - model_path (ruta absoluta o relativa).
-    """
-
-    pred_dir = os.path.join(COMMON_PATH, "predictores")
-
-    # Caso 1: ruta directa
-    if model_path is not None:
-        path = model_path
-
-    # Caso 2: nombre explícito del modelo
-    elif model_name is not None:
-        path = os.path.join(pred_dir, model_name)
-
-    # Caso 3: comportamiento original por dataset
-    elif dataset is not None:
-        if dataset == "early_stop_fashion":
-            path = os.path.join(pred_dir, "early_stop_fashion.keras")
+    @classmethod
+    def decoder(cls, lat=None, inter=None, dataset=None, name=None):
+        if name is not None:
+            path = os.path.join(cls.DECODERS_DIR, f"{name}.keras")
         else:
-            path = os.path.join(pred_dir, f"CCE_Conv2D_{dataset}.keras")
+            path = os.path.join(
+                cls.DECODERS_DIR,
+                f"de_int_{inter}_lat_{lat}_{dataset}.keras"
+            )
 
-    else:
-        raise ValueError(
-            "Debes pasar dataset, model_name o model_path"
-        )
+        return load_model(path)
 
-    return load_model(path, custom_objects={"ReshapeLayer": ReshapeLayer})
+    # ---------- CVAE ----------
 
+    @classmethod
+    def cvae(
+        cls,
+        lat=None,
+        inter=None,
+        dataset=None,
+        encoder_name=None,
+        decoder_name=None,
+        model_name=None,
+    ):
+        if model_name is not None:
+            encoder_name = f"en_{model_name}"
+            decoder_name = f"de_{model_name}"
 
-def parse_dims_from_key(key):
-    parts = key.split("_")
-    if len(parts) < 4 or parts[1] != "lat":
-        raise ValueError(f"Formato de key inválido: {key}")
+        if encoder_name and decoder_name:
+            enc_path = os.path.join(cls.ENCODERS_DIR, encoder_name)
+            dec_path = os.path.join(cls.DECODERS_DIR, decoder_name)
 
-    int_dim = int(parts[0])
-    lat_dim = int(parts[2])
+        elif lat is not None and inter is not None and dataset is not None:
+            enc_path = os.path.join(
+                cls.ENCODERS_DIR,
+                f"en_int_{inter}_lat_{lat}_{dataset}.keras"
+            )
+            dec_path = os.path.join(
+                cls.DECODERS_DIR,
+                f"de_int_{inter}_lat_{lat}_{dataset}.keras"
+            )
+        else:
+            raise ValueError(
+                "Invalid combination of arguments. "
+                "Use (lat, inter, dataset) or (encoder_name & decoder_name) or model_name."
+            )
 
-    return int_dim, lat_dim
+        # -------- validation --------
+        missing = []
+        if not os.path.exists(enc_path):
+            missing.append(("encoder", enc_path))
+        if not os.path.exists(dec_path):
+            missing.append(("decoder", dec_path))
 
-def all_models(dataset, lat=None, inter=None):
-    import os
-    from keras.models import load_model
-    from project.custom_layers.sampling import Sampling
-    from project.models_definitions.cvae import CVAE
+        if missing:
+            print("\nRequested model not found.\n")
 
-    encoders_dir = os.path.join(COMMON_PATH, "encoders")
-    decoders_dir = os.path.join(COMMON_PATH, "decoders")
+            for kind, path in missing:
+                print(f"Missing {kind}: {path}")
 
-    encoder_files = sorted(os.listdir(encoders_dir))
-    decoder_files = sorted(os.listdir(decoders_dir))
+            print("\nAvailable encoders:")
+            for f in sorted(os.listdir(cls.ENCODERS_DIR)):
+                print("  ", f)
 
-    def get_key(filename):
-        return "_".join(filename.split("_")[2:])  
+            print("\nAvailable decoders:")
+            for f in sorted(os.listdir(cls.DECODERS_DIR)):
+                print("  ", f)
 
-    encoders = {
-        get_key(f): os.path.join(encoders_dir, f)
-        for f in encoder_files
-        if f.endswith(f"{dataset}.keras")
-    }
+            raise FileNotFoundError(
+                "One or more model files were not found. "
+                "See available models above."
+            )
 
-    decoders = {
-        get_key(f): os.path.join(decoders_dir, f)
-        for f in decoder_files
-        if f.endswith(f"{dataset}.keras")
-    }
+        # -------- load models --------
+        encoder = load_model(enc_path, custom_objects={"Sampling": Sampling})
+        decoder = load_model(dec_path)
 
-    common_keys = sorted(set(encoders.keys()) & set(decoders.keys()))
+        return CVAE(encoder, decoder, original_dim=28 * 28)
 
-    # ---- FILTRADO POR inter / lat ----
-    filtered_keys = []
-    for key in common_keys:
-        int_dim, lat_dim = parse_dims_from_key(key)
+    # ---------- predictor ----------
 
-        if inter is not None and int_dim != inter:
-            continue
-        if lat is not None and lat_dim != lat:
-            continue
+    @classmethod
+    def predictor(cls, dataset=None, model_name=None, model_path=None):
+        if model_path is not None:
+            path = model_path
+        elif model_name is not None:
+            path = os.path.join(cls.PREDICTORS_DIR, model_name)
+        elif dataset is not None:
+            if dataset == "early_stop_fashion":
+                path = os.path.join(cls.PREDICTORS_DIR, "early_stop_fashion.keras")
+            else:
+                path = os.path.join(
+                    cls.PREDICTORS_DIR, f"CCE_Conv2D_{dataset}.keras"
+                )
+        else:
+            raise ValueError("dataset, model_name or model_path required")
 
-        filtered_keys.append(key)
+        return load_model(path, custom_objects={"ReshapeLayer": ReshapeLayer})
 
-    if inter is not None and lat is not None and not filtered_keys:
-        raise ValueError(
-            f"No existe ningún modelo con inter={inter} y lat={lat} para dataset '{dataset}'"
-        )
+    # ---------- utilities ----------
 
-    print(f"Encontrados {len(filtered_keys)} pares de modelos.")
-    models = []
+    @staticmethod
+    def parse_dims_from_key(key):
+        parts = key.split("_")
+        return int(parts[0]), int(parts[2])
 
-    for key in common_keys:
-        encoder_path = encoders[key]
-        decoder_path = decoders[key]
+    @classmethod
+    def all_cvaes(cls, dataset, lat=None, inter=None):
+        encoder_files = os.listdir(cls.ENCODERS_DIR)
+        decoder_files = os.listdir(cls.DECODERS_DIR)
 
-        encoder = load_model(encoder_path, custom_objects={"Sampling": Sampling})
-        decoder = load_model(decoder_path)
+        def key(f):
+            return "_".join(f.split("_")[2:])
 
-        int_dim, lat_dim = parse_dims_from_key(key)
+        encoders = {
+            key(f): os.path.join(cls.ENCODERS_DIR, f)
+            for f in encoder_files
+            if f.endswith(f"{dataset}.keras")
+        }
 
-        name = f"cvae_int_{int_dim}_lat_{lat_dim}"
+        decoders = {
+            key(f): os.path.join(cls.DECODERS_DIR, f)
+            for f in decoder_files
+            if f.endswith(f"{dataset}.keras")
+        }
 
-        cvae = CVAE(
-            encoder,
-            decoder,
-            original_dim=28*28,
-            name=name
-        )
-        cvae.compile(optimizer="adam")
+        models = []
+        for k in set(encoders) & set(decoders):
+            int_dim, lat_dim = cls.parse_dims_from_key(k)
 
-        models.append(cvae)
+            if inter and int_dim != inter:
+                continue
+            if lat and lat_dim != lat:
+                continue
 
-    return models
+            encoder = load_model(encoders[k], custom_objects={"Sampling": Sampling})
+            decoder = load_model(decoders[k])
+
+            cvae = CVAE(
+                encoder,
+                decoder,
+                original_dim=28 * 28,
+                name=f"cvae_int_{int_dim}_lat_{lat_dim}",
+            )
+            cvae.compile(optimizer="adam")
+            models.append(cvae)
+
+        return models
+
+    # ---------- data ----------
+
+    @classmethod
+    def data(cls, dataset):
+        return get_mnist_data(dataset=dataset)

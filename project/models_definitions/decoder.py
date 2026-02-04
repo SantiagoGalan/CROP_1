@@ -1,16 +1,36 @@
 from keras.layers import Input, Dense, Concatenate
 from keras.models import Model
 
-def build_decoder(latent_dim=2, cond_dim=(10,), intermediate_dim=128, original_shape=(28, 28)):
-    original_dim = original_shape[0] * original_shape[1]
 
-    z_inputs = Input(shape=(latent_dim,), name="z_sampling")
-    cond_decoder = Input(shape=cond_dim, name="decoder_condition")
-    
-    latent_inputs = Concatenate()([z_inputs, cond_decoder])
+class Decoder(Model):
+    def __init__(
+        self,
+        latent_dim=2,
+        cond_dim=(10,),
+        intermediate_dim=128,
+        original_shape=(28, 28),
+        name="decoder",
+        **kwargs
+    ):
+        super().__init__(name=name, **kwargs)
 
-    x = Dense(intermediate_dim, activation="relu")(latent_inputs)
-    decoder_outputs = Dense(original_dim, activation="sigmoid")(x)
+        self.original_dim = original_shape[0] * original_shape[1]
 
-    decoder = Model(inputs=[z_inputs, cond_decoder], outputs=decoder_outputs, name="decoder")
-    return decoder
+        # Inputs
+        z_inputs = Input(shape=(latent_dim,), name="z_sampling")
+        cond_inputs = Input(shape=cond_dim, name="decoder_condition")
+
+        # Architecture
+        x = Concatenate()([z_inputs, cond_inputs])
+        x = Dense(intermediate_dim, activation="relu")(x)
+        outputs = Dense(self.original_dim, activation="sigmoid")(x)
+
+        # Build functional model internally
+        self._model = Model(
+            inputs=[z_inputs, cond_inputs],
+            outputs=outputs,
+            name=name
+        )
+
+    def call(self, inputs, training=False):
+        return self._model(inputs, training=training)

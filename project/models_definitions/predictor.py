@@ -1,35 +1,51 @@
-from keras.layers import Input, Dense, Conv2D, BatchNormalization, Dropout, Flatten
-from keras.models import Model
+import tensorflow as tf
+from keras.layers import Dense, Conv2D, BatchNormalization, Dropout, Flatten
 from custom_layers.reshapeLayer import ReshapeLayer
 
-def build_predictor():
-    image_size = 28
-    original_dim_C = (image_size, image_size, 1)                                                       # ¿agregar condición?
-    original_dim = image_size * image_size
 
-    n_cond = 10
+class Predictor(tf.keras.Model):
+    def __init__(
+        self,
+        image_size=28,
+        n_cond=10,
+        dropout_rate=0.5,
+        name="predictor",
+        **kwargs,
+    ):
+        super().__init__(name=name, **kwargs)
 
-    input_predictor = Input(shape=(original_dim,), name="original_input")
+        self.image_size = image_size
+        self.original_dim = image_size * image_size
+        self.original_dim_C = (image_size, image_size, 1)
 
-    input_predictor_C = ReshapeLayer(original_dim_C)(input_predictor)
+        # Layers
+        self.reshape = ReshapeLayer(self.original_dim_C)
 
-    predictor_inputs = input_predictor_C
-    '''
-    x = layers.Conv2D(32, 3, activation="relu", strides=2, padding="same")(predictor_inputs)
-    x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
-    x = layers.Flatten()(x)
-    predictor_outputs = Dense(n_cond, activation="softmax")(x)
-    '''
-    x = Conv2D(32, 3, activation="relu", strides=2, padding="same")(predictor_inputs)
-    x = BatchNormalization()(x)  # Add batch normalization
-    x = Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
-    x = BatchNormalization()(x)  # Add batch normalization
-    x = Flatten()(x)
-    x = Dropout(0.5)(x)  # Add dropout
-    predictor_outputs = Dense(n_cond, activation="softmax")(x)
+        self.conv1 = Conv2D(
+            32, 3, strides=2, padding="same", activation="relu"
+        )
+        self.bn1 = BatchNormalization()
 
-    # instantiate decoder model
+        self.conv2 = Conv2D(
+            64, 3, strides=2, padding="same", activation="relu"
+        )
+        self.bn2 = BatchNormalization()
 
-    predictor = Model(inputs=input_predictor, outputs=predictor_outputs, name="predictor")
-    predictor.summary()
-    return predictor
+        self.flatten = Flatten()
+        self.dropout = Dropout(dropout_rate)
+
+        self.classifier = Dense(n_cond, activation="softmax")
+
+    def call(self, inputs, training=False):
+        x = self.reshape(inputs)
+
+        x = self.conv1(x)
+        x = self.bn1(x, training=training)
+
+        x = self.conv2(x)
+        x = self.bn2(x, training=training)
+
+        x = self.flatten(x)
+        x = self.dropout(x, training=training)
+
+        return self.classifier(x)

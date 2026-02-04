@@ -202,7 +202,8 @@ def latent_space_umap(
     # Colormap discreto con labels centrados
     # -----------------------------
     cmap = ListedColormap(plt.cm.tab10.colors[:n_classes])
-    boundaries = np.arange(-0.5, n_classes + 0.5, 1)
+    boundaries = np.arange(-0.5, n_classes, 1)
+    #boundaries = np.arange(-0.5, n_classes + 0.5, 1)
     norm = BoundaryNorm(boundaries, cmap.N)
 
     # -----------------------------

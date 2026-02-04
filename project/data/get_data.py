@@ -18,7 +18,7 @@ def get_mnist_data(dataset="mnist"):
         # MNIST dataset
         (x_train, y_train), (x_test, y_test) = mnist.load_data()
         print(f"Usando {dataset} como dataset")
-        labels=["0","1","2","3","4","5","6","7","8","9","0"]
+        labels=["0","1","2","3","4","5","6","7","8","9"]
     else:
         raise ValueError("Los datasets disponibles son mnist o fashion")
 
