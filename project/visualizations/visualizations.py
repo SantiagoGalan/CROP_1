@@ -151,7 +151,7 @@ def latent_space_tsne(cvae, dataset, max_samples=10000, save_path=None):
 def latent_space_umap(
     cvae,
     dataset,
-    max_samples=2000,
+    n_points=2000,
     save_path=None,
     title="",
     label_names=None
@@ -184,11 +184,11 @@ def latent_space_umap(
         y_all.append(labels)
 
         count += len(batch)
-        if count >= max_samples:
+        if count >= n_points:
             break
 
-    z_all = np.concatenate(z_all, axis=0)[:max_samples]
-    y_all = np.argmax(np.concatenate(y_all, axis=0)[:max_samples], axis=1)
+    z_all = np.concatenate(z_all, axis=0)[:n_points]
+    y_all = np.argmax(np.concatenate(y_all, axis=0)[:n_points], axis=1)
 
     n_classes = len(label_names)
 
