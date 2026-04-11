@@ -1,6 +1,6 @@
 import tensorflow as tf
 from keras.layers import Dense, Conv2D, BatchNormalization, Dropout, Flatten
-from custom_layers.reshapeLayer import ReshapeLayer
+from project.custom_layers.reshapeLayer import ReshapeLayer
 
 
 class Predictor(tf.keras.Model):
