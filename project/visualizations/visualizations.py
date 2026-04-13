@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+
 
 
 def condiciones(cvae, x_input):
@@ -273,3 +275,100 @@ def variantes_punto_fijo(cvae, z_fixed=None, num_puntos=5):
     plt.show()
     
     return z_fixed  # Retornar los puntos para poder reusarlos
+
+def confusion_matrix_plot(
+    predictor,
+    dataset=None,
+    x=None,
+    y=None,
+    label_names=None
+):
+    """
+    Genera y visualiza la matriz de confusión en porcentajes.
+
+    Args:
+        predictor: modelo de clasificación (softmax).
+        dataset: tf.data.Dataset con formato ((x, y), x)
+        x, y: alternativa si no usas dataset
+        label_names: nombres de clases (ej: Fashion MNIST)
+    """
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    from sklearn.metrics import confusion_matrix, classification_report
+
+    y_true = []
+    y_pred = []
+
+    # =========================
+    # 1. Obtener predicciones
+    # =========================
+    if dataset is not None:
+        for (x_batch, y_batch), _ in dataset:
+            preds = predictor(x_batch, training=False)
+            preds = np.argmax(preds.numpy(), axis=1)
+
+            y_batch_np = y_batch.numpy()
+            if len(y_batch_np.shape) > 1:
+                y_batch_np = np.argmax(y_batch_np, axis=1)
+
+            y_pred.extend(preds)
+            y_true.extend(y_batch_np)
+
+    else:
+        preds = predictor(x, training=False)
+        y_pred = np.argmax(preds.numpy(), axis=1)
+
+        y_true = y
+        if len(y.shape) > 1:
+            y_true = np.argmax(y, axis=1)
+
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    # =========================
+    # 2. Matriz de confusión normalizada
+    # =========================
+    cm = confusion_matrix(y_true, y_pred)
+
+    cm = cm.astype("float") / cm.sum(axis=1, keepdims=True)
+    cm = np.nan_to_num(cm)  # evitar NaN si alguna clase no aparece
+
+    # =========================
+    # 3. Labels
+    # =========================
+    if label_names is None:
+        label_names = [str(i) for i in range(cm.shape[0])]
+
+    # =========================
+    # 4. Plot
+    # =========================
+    plt.figure(figsize=(10, 10))
+
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt=".2%",
+        cmap="Blues",
+        xticklabels=label_names,
+        yticklabels=label_names,
+        cbar=False
+    )
+
+
+
+    plt.xlabel("Predicción")
+    plt.ylabel("Valor real")
+    plt.title("Matriz de Confusión (%)")
+
+    plt.xticks(rotation=45, ha="right")
+    plt.yticks(rotation=0)
+
+    plt.tight_layout()
+    plt.show()
+
+    # =========================
+    # 5. Reporte
+    # =========================
+    print(classification_report(y_true, y_pred, target_names=label_names))
