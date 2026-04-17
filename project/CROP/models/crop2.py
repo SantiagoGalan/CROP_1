@@ -21,7 +21,7 @@ class Crop2(CropBaseModel):
             [x_mix_filter_1, condition_encoder], verbose=0, training=0
         )
 
-        zz_log_var = encoded_imgs[1] + alpha#hacer un print para ver que valores tiene  encoded_imgs[1] 
+        zz_log_var = encoded_imgs[1]  + alpha
 
         z = Sampling()((encoded_imgs[0], zz_log_var))
 
