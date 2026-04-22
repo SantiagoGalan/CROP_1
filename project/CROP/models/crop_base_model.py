@@ -249,6 +249,10 @@ class CropBaseModel(ABC):
         for _ in range(iterations):
             self.decode()
 
+        # self.source1_estimation =self.cvae.predict([self.source1_estimation,self.predictions1])
+
+        # self.source2_estimation= self.cvae.predict([self.source2_estimation,self.predictions2])
+
         # Cálculo de métricas
         metrics = self._compute_all_metrics(
             source1_gt, source2_gt, source1_labels, source2_labels
