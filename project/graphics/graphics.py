@@ -186,51 +186,82 @@ class Graphics:
         plt.show()
 
     @classmethod
-    def acc_plot(
-    cls,
-    acc_at_least_one_plot,
-    acc_both_plot,
-    plot_name=None,
-    params=None,
-):
-        fig, ax = plt.subplots()
+    def curves_plot(
+        cls,
+        curves_by_panel,
+        model_params=None,
+        title="",
+        save_path=None,
+    ):
+        if not curves_by_panel:
+            return
 
-        ax.plot(
-            acc_both_plot,
-            label=f"ambos max: ({np.max(acc_both_plot):.3f})"
-        )
+        # Mapeo a nombres en español
+        title_map = {
+            "accuracy": "Precisión vs Iteraciones",
+            "ssim": "SSIM vs Iteraciones",
+            "psnr": "PSNR vs Iteraciones",
+        }
 
-        ax.grid()
-        ax.set_title("Accuracy")
-        ax.set_xlabel("iterations")
-        ax.set_ylabel("acc")
-        ax.legend()
+        label_map = {
+            "acc_both": "precisión",
+            "ssim": "ssim",
+            "recon_psnr": "psnr",
+        }
 
-        # 🔹 Texto de parámetros debajo del plot
-        if params is not None:
-            text = " | ".join(
-                f"{k}: {v:.3f}" if isinstance(v, (int, float)) else f"{k}: {v}"
-                for k, v in params.items()
-            )
+        for panel_name, series_dict in curves_by_panel.items():
 
-            # Dejar espacio abajo
-            plt.subplots_adjust(bottom=0.25)
+            fig, ax = plt.subplots(figsize=(10, 4))
 
-            fig.text(
-                0.5,
-                0.12,
-                text,
-                ha="center",
-                va="center",
-                fontsize=9,
-                wrap=True,
-            )
+            for series_name, values in series_dict.items():
+                if values is None or len(values) == 0:
+                    continue
 
-        if plot_name:
-            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                x = np.arange(1, len(values) + 1)
+                last_val = values[-1]
 
-        plt.show()
+                metric_name = label_map.get(series_name, series_name)
 
+                label = f"{metric_name}. último valor: {last_val:.3f}"
+
+                # sin markers
+                ax.plot(x, values, label=label)
+
+            # Título en español
+            ax.set_title(title_map.get(panel_name, panel_name))
+            ax.set_xlabel("Iteraciones")
+
+            ax.grid(True, alpha=0.3)
+            ax.legend()
+
+            # Parámetros abajo (igual que complete_plot)
+            if model_params is not None:
+                param_parts = []
+                for k, v in model_params.items():
+                    if isinstance(v, (int, float, np.floating)):
+                        param_parts.append(f"{k}={float(v):.3f}")
+                    else:
+                        param_parts.append(f"{k}={v}")
+
+                param_text = " | ".join(param_parts)
+
+                fig.text(
+                    0.5,
+                    0.02,
+                    param_text,
+                    ha="center",
+                    color="darkblue",
+                    fontsize=10,
+                )
+
+            plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+
+            # Guardado por métrica
+            if save_path:
+                path = f"{save_path}_{panel_name}.png"
+                plt.savefig(path, bbox_inches="tight")
+
+            plt.show()
 
 
 

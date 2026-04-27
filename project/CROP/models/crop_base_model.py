@@ -226,61 +226,142 @@ class CropBaseModel(ABC):
             print(f"{key.ljust(max_key_len)} : {value}")
 
     def unmix(
-        self,
-        source1_gt,
-        source2_gt,
-        source1_labels,
-        source2_labels,
-        iterations=10,
-        show_image=False,
-        show_metrics=True,
-        save_path=None,
-        params=None,
-        labels=None,
-    ):
+    self,
+    source1_gt,
+    source2_gt,
+    source1_labels,
+    source2_labels,
+    iterations=10,
+    show_image=False,
+    show_metrics=True,
+    save_path=None,
+    params=None,
+    labels=None,
+    show_all_curves=False,
+    show_acc_curve=False,
+    show_ssim_curve=False,
+    show_psnr_curve=False,
+    curves_save_path=None,
+):
 
-        # Mezclar parámetros por defecto + overrides
-        self.model_params = {**self.model_params, **(params or {})}
+        # -------------------- params --------------------
+        self.model_params = {**self.default_params.copy(), **(params or {})}
 
-        # Mezcla 
+        # -------------------- mix --------------------
         self.mix(source1_gt, source2_gt, self.model_params)
 
-        # Decodificación 
-        for _ in range(iterations):
-            self.decode()
+        # -------------------- flags --------------------
+        curves_requested = (
+            show_all_curves or show_acc_curve or show_ssim_curve or show_psnr_curve
+        )
 
+        # -------------------- iteraciones --------------------
+        if curves_requested:
+            curves = self._collect_iteration_curves(
+                source1_gt=source1_gt,
+                source2_gt=source2_gt,
+                source1_cond=source1_labels,
+                source2_cond=source2_labels,
+                iterations=iterations,
+                track_acc=show_acc_curve or show_all_curves,
+                track_ssim=show_ssim_curve or show_all_curves,
+                track_psnr=show_psnr_curve or show_all_curves,
+                track_all=show_all_curves,
+            )
+        else:
+            for _ in range(iterations):
+                self.decode()
+            curves = None
 
-        # Cálculo de métricas
+        # -------------------- predicciones finales --------------------
+        if self.predictions1 is None:
+            self.predictions1 = self.predictor.predict(
+                self.source1_estimation, verbose=False
+            )
+
+        if self.predictions2 is None:
+            self.predictions2 = self.predictor.predict(
+                self.source2_estimation, verbose=False
+            )
+
+        # -------------------- métricas finales --------------------
         metrics = self._compute_all_metrics(
             source1_gt, source2_gt, source1_labels, source2_labels
         )
 
-        # Armar diccionario final del resultado
+        # -------------------- resultado --------------------
         result = {
             "predictions_1": self.predictions1,
             "predictions_2": self.predictions2,
             "model_params": self.model_params,
-            **{k: metrics[k] for k in ("recon_bpsnr", "ssim", "mask_bpsnr", "acc_at_least_one", "acc_both")}
+            **{
+                k: metrics[k]
+                for k in (
+                    "recon_bpsnr",
+                    "ssim",
+                    "mask_bpsnr",
+                    "acc_at_least_one",
+                    "acc_both",
+                )
+            },
         }
 
-        # Mostrar imagen con métricas
+        # 🔥 agregar curvas al resultado
+        if curves is not None:
+            result.update({
+                "acc_both_plot": curves.get("acc_both", []),
+                "ssim_plot": curves.get("ssim", []),
+                "psnr_plot": curves.get("recon_bpsnr", []),
+            })
+
+        # -------------------- imagen --------------------
         if show_image:
             self.graphicator.complete_plot(
                 self.mixed_input,
-                source1_gt, source2_gt,
-                source1_labels,source2_labels,
-                self.source1_estimation, self.source2_estimation,
-                self.mask1, self.mask2,
-                self.predictions1,self.predictions2,
+                source1_gt,
+                source2_gt,
+                source1_labels,
+                source2_labels,
+                self.source1_estimation,
+                self.source2_estimation,
+                self.mask1,
+                self.mask2,
+                self.predictions1,
+                self.predictions2,
                 metrics["best_prediction_source1"],
                 model_params=self.model_params,
                 metrics=metrics,
-                #title=f"Modelo: {self.name}",
                 save_path=save_path,
                 class_labels=labels,
             )
 
-        # Mostrar tabla
+        # -------------------- curvas --------------------
+        if curves_requested:
+            plot_data = {}
+
+            if show_acc_curve or show_all_curves:
+                plot_data["accuracy"] = {
+                    "acc_both": curves["acc_both"],
+                }
+
+            if show_ssim_curve or show_all_curves:
+                plot_data["ssim"] = {
+                    "ssim": curves["ssim"],
+                }
+
+            if show_psnr_curve or show_all_curves:
+                plot_data["psnr"] = {
+                    "recon_psnr": curves["recon_bpsnr"],
+                }
+
+            self.graphicator.curves_plot(
+                plot_data,
+                model_params=self.model_params,
+                title=f"{self.name}",
+                save_path=curves_save_path,
+            )
+
+        # -------------------- print --------------------
         if show_metrics:
             print("\n======= PARÁMETROS DEL MODELO =====================")
             self._print_named_table(self.model_params)
@@ -289,12 +370,85 @@ class CropBaseModel(ABC):
             self._print_named_table(metrics)
             print("==================================================\n")
 
-        # reset a defaults
-        self.model_params = self.default_params
+        # -------------------- reset --------------------
+        self.model_params = self.default_params.copy()
 
         return result
 
-    def acc_curve(
+    def _params_text(self, model_params):
+        parts = []
+        for k, v in model_params.items():
+            if isinstance(v, (int, float, np.floating)):
+                parts.append(f"{k}={float(v):.3f}")
+            else:
+                parts.append(f"{k}={v}")
+        return " | ".join(parts)
+
+    def _collect_iteration_curves(
+        self,
+        source1_gt,
+        source2_gt,
+        source1_cond,
+        source2_cond,
+        iterations,
+        track_acc=False,
+        track_ssim=False,
+        track_psnr=False,
+        track_all=False,
+    ):
+        curves = {
+            "acc_at_least_one": [],
+            "acc_both": [],
+            "ssim": [],
+            "recon_bpsnr": [],
+            "mask_bpsnr": [],
+        }
+
+        for _ in range(iterations):
+            self.decode()
+
+            if track_acc:
+                self.predictions1 = self.predictor.predict(self.source1_estimation, verbose=False)
+                self.predictions2 = self.predictor.predict(self.source2_estimation, verbose=False)
+
+                acc_at_least_one, acc_both = self.metrics_cal.accuracys(
+                    gt1=source1_cond,
+                    gt2=source2_cond,
+                    p1=self.predictions1,
+                    p2=self.predictions2,
+                )
+                curves["acc_both"].append(acc_both)
+
+            if track_ssim or track_all:
+                ssim_mean, _ = self.metrics_cal.batched_ssim(
+                    gt1=source1_gt,
+                    gt2=source2_gt,
+                    gen1=self.source1_estimation,
+                    gen2=self.source2_estimation,
+                )
+                curves["ssim"].append(ssim_mean)
+
+            if track_psnr or track_all:
+                recon_psnr_mean, _ = self.metrics_cal.batched_psnr(
+                    gt1=source1_gt,
+                    gt2=source2_gt,
+                    gen1=self.source1_estimation,
+                    gen2=self.source2_estimation,
+                )
+                curves["recon_bpsnr"].append(recon_psnr_mean)
+
+                if track_all:
+                    mask_psnr_mean, _ = self.metrics_cal.batched_psnr(
+                        gt1=source1_gt,
+                        gt2=source2_gt,
+                        gen1=self.mask1,
+                        gen2=self.mask2,
+                    )
+                    curves["mask_bpsnr"].append(mask_psnr_mean)
+
+        return curves
+
+    def metric_curve(
         self,
         source1_gt,
         source2_gt,
@@ -302,117 +456,55 @@ class CropBaseModel(ABC):
         source2_cond,
         iterations=3,
         params=None,
-        name=None
+        name=None,
+        show_acc_curve=False,
+        show_ssim_curve=False,
+        show_psnr_curve=False,
+        show_all_curves=False,
+        save_path=None,
     ):
-
-        # seteo de parametros
-        self.model_params = {**self.model_params, **(params or {})}
-
-        # Mezcla 
+        self.model_params = {**self.default_params.copy(), **(params or {})}
         self.mix(source1_gt, source2_gt, self.model_params)
 
-        acc_at_least_one_plot = []
-        acc_both_plot = []
+        curves = self._collect_iteration_curves(
+            source1_gt=source1_gt,
+            source2_gt=source2_gt,
+            source1_cond=source1_cond,
+            source2_cond=source2_cond,
+            iterations=iterations,
+            track_acc=show_acc_curve or show_all_curves,
+            track_ssim=show_ssim_curve or show_all_curves,
+            track_psnr=show_psnr_curve or show_all_curves,
+            track_all=show_all_curves,
+        )
 
-             # Decodificación 
-        for _ in range(iterations):
-            self.decode()
-            prediction1 = self.predictor.predict(self.source1_estimation,verbose=False)
-            prediction2 = self.predictor.predict(self.source2_estimation,verbose=False)
-            
-            #calculo acc es cada iteración para el grafico
-            acc_at_least_one, acc_both = self.metrics_cal.accuracys(
-                    gt1=source1_cond, gt2=source2_cond,
-                    p1=prediction1, p2=prediction2
-                )
+        plot_data = {}
+        if show_acc_curve or show_all_curves:
+            plot_data["accuracy"] = {
+                "acc_at_least_one": curves["acc_at_least_one"],
+                "acc_both": curves["acc_both"],
+            }
+        if show_ssim_curve or show_all_curves:
+            plot_data["ssim"] = {
+                "ssim": curves["ssim"],
+            }
+        if show_psnr_curve or show_all_curves:
+            plot_data["psnr"] = {
+                "recon_bpsnr": curves["recon_bpsnr"],
+            }
+            if show_all_curves and len(curves["mask_bpsnr"]) > 0:
+                plot_data["psnr"]["mask_bpsnr"] = curves["mask_bpsnr"]
 
+        if plot_data:
+            self.graphicator.curves_plot(
+                plot_data,
+                model_params=self.model_params,
+                title=name or f"Curvas - {self.name}",
+                save_path=save_path,
+            )
 
-            acc_at_least_one_plot.append(acc_at_least_one)
-            acc_both_plot.append(acc_both)
-
-        self.graphicator.acc_plot(acc_at_least_one_plot,acc_both_plot,name,params=params)
-      
-        return {
-            "acc_at_least_one_plot": acc_at_least_one_plot,
-            "acc_both_plot": acc_both_plot,
-        }
-    
-
-    def psnr_curve(
-            self,
-            source1_gt,
-            source2_gt,
-            source1_cond,
-            source2_cond,
-            iterations=3,
-            params=None,
-            name=None
-        ):
-
-        # seteo de parametros
-        self.model_params = {**self.model_params, **(params or {})}
-
-        # Mezcla 
-        self.mix(source1_gt, source2_gt, self.model_params)
-
-        psnr_mean_resuts = []
-        psnr_std_resuts = []
-
-             # Decodificación 
-        for _ in range(iterations):
-            self.decode()
-            psnr_mean, psnr_std = self.metrics_cal.batched_psnr(
-                    gt1=source1_gt, gt2=source2_gt,
-                    gen1=self.source1_estimation, gen2=self.source1_estimation
-                )
-
-            psnr_mean_resuts.append(psnr_mean)
-            psnr_std_resuts.append(psnr_std)
-
-
-        return {
-            "psnr_mean": psnr_mean_resuts,
-            "psnr_std": psnr_std_resuts,
-        }
-    
-
-    def ssim_curve(
-            self,
-            source1_gt,
-            source2_gt,
-            source1_cond,
-            source2_cond,
-            iterations=3,
-            params=None,
-            name=None
-        ):
-
-        # seteo de parametros
-        self.model_params = {**self.model_params, **(params or {})}
-
-        # Mezcla 
-        self.mix(source1_gt, source2_gt, self.model_params)
-
-        ssim_mean_resuts = []
-        ssim_std_resuts = []
-
-             # Decodificación 
-        for _ in range(iterations):
-            self.decode()
-            ssim_mean, ssim_std = self.metrics_cal.batched_ssim(
-                    gt1=source1_gt, gt2=source2_gt,
-                    gen1=self.source1_estimation, gen2=self.source1_estimation
-                )
-
-            ssim_mean_resuts.append(ssim_mean)
-            ssim_std_resuts.append(ssim_std)
-
-        #self.graphicator.acc_plot(ssim_mean,ssim_std,name,params=params)
-      
-        return {
-            "ssim_mean": ssim_mean_resuts,
-            "ssim_std": ssim_std_resuts,
-        }
+        self.model_params = self.default_params.copy()
+        return curves
     
     
     def reconstruction_by_condition(self,x_input):
