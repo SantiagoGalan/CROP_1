@@ -176,7 +176,7 @@ class CropBaseModel(ABC):
 
         ssim_mean, ssim_std = self.metrics_cal.batched_ssim(
             gt1=gt1, gt2=gt2,
-            gen1=self.mask1, gen2=self.mask2
+            gen1=self.source1_estimation, gen2=self.source2_estimation
         )
 
         acc_at_least_one, acc_both = self.metrics_cal.accuracys(
@@ -249,9 +249,6 @@ class CropBaseModel(ABC):
         for _ in range(iterations):
             self.decode()
 
-        # self.source1_estimation =self.cvae.predict([self.source1_estimation,self.predictions1])
-
-        # self.source2_estimation= self.cvae.predict([self.source2_estimation,self.predictions2])
 
         # Cálculo de métricas
         metrics = self._compute_all_metrics(
@@ -372,8 +369,7 @@ class CropBaseModel(ABC):
             psnr_mean_resuts.append(psnr_mean)
             psnr_std_resuts.append(psnr_std)
 
-        #self.graphicator.acc_plot(psnr_mean,psnr_std,name,params=params)
-      
+
         return {
             "psnr_mean": psnr_mean_resuts,
             "psnr_std": psnr_std_resuts,
