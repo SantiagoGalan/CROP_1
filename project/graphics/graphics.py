@@ -22,14 +22,18 @@ class Graphics:
         best_prediction,
         model_params=None,
         metrics=None,
-        title="",
+        title="Separación de imagenes",
         save_path=None,
         class_labels=None,
+        dataset=None,
     ):
 
         reconstructed_mix = 0.5 * reconstructed_source1 + 0.5 * reconstructed_source2
         reconstructed_error =  reconstructed_mix - mixed_input 
-
+        
+        # Calcular escala global para reconstructed_error
+        error_vmin = float(tf.reduce_min(reconstructed_error).numpy())
+        error_vmax = float(tf.reduce_max(reconstructed_error).numpy())
 
         images = [
             mixed_input,
@@ -45,16 +49,16 @@ class Graphics:
         ]
 
         row_labels = [
-            "x_mix",
-            "source1_gt",
-            "source2_gt",
-            "x_filt_1",
-            "x_filt_2",
-            "recon_mix",
-            "recon_error",
-            "mask_1",
-            "mask_2",
-            "x_best_pred",
+            "Imagen \n mezcla",
+            "Imagen \n original 1",
+            "Imagen \n original 2",
+            "Estimacion 1",
+            "Estimacion 2",
+            "Mezcla \n estimada",
+            "Error entre \n mezclas",
+            "Mascara 1",
+            "Mascara 2",
+            #"Mejor estimación",
         ]
 
         num_rows = len(images)
@@ -63,54 +67,78 @@ class Graphics:
 
         fig_width = num_cols * 1
         fig_height = num_rows * 1
-        fig, axes = plt.subplots(num_rows, num_cols + 1, figsize=(fig_width + 2, fig_height))
+        BIG_HIGHT = 1
+        SMALL_HIGHT = 0.3
+        # Crear GridSpec con separaciones entre grupos de filas
+        # Filas: 0(x_mix) | sep | 1(source1_gt) 2(source2_gt) | sep | 3(x_filt_1) 4(x_filt_2) | sep | 5(recon_mix) 6(recon_error) | sep | 7(mask_1) 8(mask_2) 9(x_best_pred)
+        row_heights = [
+            BIG_HIGHT,      # 0: x_mix
+            SMALL_HIGHT,    # sep
+            BIG_HIGHT, BIG_HIGHT,   # 1-2: source1_gt, source2_gt
+            SMALL_HIGHT,    # sep
+            BIG_HIGHT, BIG_HIGHT,   # 3-4: x_filt_1, x_filt_2
+            SMALL_HIGHT,    # sep
+            BIG_HIGHT, BIG_HIGHT,   # 5-6: recon_mix, recon_error
+            SMALL_HIGHT,    # sep
+            BIG_HIGHT, BIG_HIGHT, BIG_HIGHT # 7-9: mask_1, mask_2, x_best_pred
+        ]
+        
+        gs = plt.GridSpec(len(row_heights), num_cols + 1, 
+                          height_ratios=row_heights,
+                          hspace=0.3,
+                          wspace=0.1)
+        
+        fig = plt.figure(figsize=(fig_width + 2, fig_height + 2))
+        
+        # Mapeo de filas originales a filas en la grilla
+        grid_row_map = [0, 2, 3, 5, 6, 8, 9, 11, 12, 13]
 
-        # Asegurar ejes 2D
-        if num_rows == 1:
-            axes = np.expand_dims(axes, 0)
-        if num_cols == 1:
-            axes = np.expand_dims(axes, 1)
-
-        for row in range(num_rows):
+        for row in range(num_rows-1):
+            grid_row = grid_row_map[row]
+            
             # Etiqueta de la fila
-            ax_label = axes[row, 0]
+            ax_label = fig.add_subplot(gs[grid_row, 0])
             ax_label.axis("off")
             ax_label.text(0.5, 0.5, row_labels[row], ha="center", va="center", fontsize=10)
 
             # Contenido visual
             for col in range(num_cols):
-                ax = axes[row, col + 1]
+                ax = fig.add_subplot(gs[grid_row, col + 1])
                 ax.axis("off")
 
                 img = images[row][col] if num_cols > 1 else images[row]
                 if len(img.shape) == 1:
                     img = tf.reshape(img, (img_size, img_size))
 
-                ax.imshow(img.numpy(), cmap="gray")
+                # Usar escala global para recon_error
+                if row_labels[row] == "Error entre \n mezclas":
+                    ax.imshow(img.numpy(), cmap="gray", vmin=error_vmin, vmax=error_vmax)
+                else:
+                    ax.imshow(img.numpy(), cmap="gray")
 
                 if class_labels is not None:
 
                     label_text = None
 
                     # SOURCE1_GT
-                    if row_labels[row] == "source1_gt":
+                    if row_labels[row] == "Imagen original 1":
                         label_idx = np.argmax(source1_labels[col])
                         label_text = class_labels[label_idx]
 
                     # SOURCE2_GT
-                    elif row_labels[row] == "source2_gt":
+                    elif row_labels[row] == "Imagen original 2":
                         label_idx = np.argmax(source2_labels[col])
                         label_text = class_labels[label_idx]
 
                     # X_FILT_1 (RECONSTRUCTED SOURCE 1)
-                    elif row_labels[row] == "x_filt_1":
+                    elif row_labels[row] == "Estimacion 1":
                         # usar la PREDICCIÓN del modelo, no la imagen reconstruida
                         if prediction_source1 is not None:
                             label_idx = np.argmax(prediction_source1[col])
                             label_text = class_labels[label_idx]
 
                     # X_FILT_2 (RECONSTRUCTED SOURCE 2)
-                    elif row_labels[row] == "x_filt_2":
+                    elif row_labels[row] == "Estimacion 2":
                         if prediction_source2 is not None:
                             label_idx = np.argmax(prediction_source2[col])
                             label_text = class_labels[label_idx]
@@ -129,21 +157,27 @@ class Graphics:
                         )
 
 
-        fig.suptitle(title, color="darkred")
+        # Construir título automáticamente si se proporciona dataset
+        if dataset is not None:
+            final_title = "Separación de imagenes"
+        else:
+            final_title = title
+        
+        fig.suptitle(final_title, color="darkred")
 
         if model_params is not None:
             param_parts = []
 
             for k, v in model_params.items():
                 if isinstance(v, (int, float)):
-                    param_parts.append(f"{k}={v:.3f}")
+                    param_parts.append(f"{k}={v:.2f}")
                 else:
                     param_parts.append(f"{k}={v}")
 
-            param_text = " | ".join(param_parts)
+            param_text = "Parametros: " + " | ".join(param_parts)
 
             fig.text(0.5,
-                0.05,
+                0.08,
                 param_text,
                 ha="center",
                 color="darkblue",
@@ -155,7 +189,7 @@ class Graphics:
 
             for k, v in metrics.items():
 
-                if k in ("predictions_1", "predictions_2", "best_prediction_source1"):
+                if k in ("predictions_1", "predictions_2", "best_prediction_source1", "mask_bpsnr"):
                     continue
 
                 if isinstance(v, tuple) and len(v) == 2:
@@ -168,21 +202,23 @@ class Graphics:
                 else:
                     metric_parts.append(f"{k}={v}")
 
-            metrics_text = " | ".join(metric_parts)
+            metrics_text = "Resultados: " + " | ".join(metric_parts)
 
             fig.text(
                 0.5,
-                0.00,
+                0.05,
                 metrics_text,
                 ha="center",
                 color="black",
                 fontsize=10,
             )
 
+        
+        plt.subplots_adjust(top=0.96)
+        
         if save_path:
             plt.savefig(save_path, bbox_inches="tight")
         
-        plt.subplots_adjust(hspace=0.3) 
         plt.show()
 
     @classmethod
@@ -199,12 +235,14 @@ class Graphics:
         # Mapeo a nombres en español
         title_map = {
             "accuracy": "Precisión vs Iteraciones",
+            "accuracy_at_least_one": "Precisión vs Iteraciones",            
             "ssim": "SSIM vs Iteraciones",
             "psnr": "PSNR vs Iteraciones",
         }
 
         label_map = {
             "acc_both": "precisión",
+            "accuracy_at_least_one": "precisión",
             "ssim": "ssim",
             "recon_psnr": "psnr",
         }

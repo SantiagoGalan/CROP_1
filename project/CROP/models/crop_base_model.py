@@ -89,6 +89,7 @@ class CropBaseModel(ABC):
             "gamma": 0.33,
             "alpha_mix": 0.5,
             "beta": 1,
+            "iteraciones":10
         }
         self.name = self.cvae.name
         self.model_params = self.default_params
@@ -159,7 +160,7 @@ class CropBaseModel(ABC):
         self.mask2 = (average_image)
         self.source1_estimation = (average_image)
         self.source2_estimation = (average_image)
-
+        
         return average_image
 
     def _compute_all_metrics(self, gt1, gt2, lbl1, lbl2):
@@ -310,8 +311,10 @@ class CropBaseModel(ABC):
         if curves is not None:
             result.update({
                 "acc_both_plot": curves.get("acc_both", []),
+                "acc_at_least_one_plot": curves.get("acc_at_least_one", []),
                 "ssim_plot": curves.get("ssim", []),
                 "psnr_plot": curves.get("recon_bpsnr", []),
+
             })
 
         # -------------------- imagen --------------------
@@ -332,7 +335,7 @@ class CropBaseModel(ABC):
                 model_params=self.model_params,
                 metrics=metrics,
                 save_path=save_path,
-                class_labels=labels,
+                class_labels=labels
             )
 
         # -------------------- curvas --------------------
@@ -343,6 +346,10 @@ class CropBaseModel(ABC):
                 plot_data["accuracy"] = {
                     "acc_both": curves["acc_both"],
                 }
+                plot_data["accuracy_at_least_one"] = {
+                    "accuracy_at_least_one": curves["acc_at_least_one"],
+                }
+                
 
             if show_ssim_curve or show_all_curves:
                 plot_data["ssim"] = {
@@ -418,7 +425,8 @@ class CropBaseModel(ABC):
                     p2=self.predictions2,
                 )
                 curves["acc_both"].append(acc_both)
-
+                curves["acc_at_least_one"].append(acc_at_least_one)
+                
             if track_ssim or track_all:
                 ssim_mean, _ = self.metrics_cal.batched_ssim(
                     gt1=source1_gt,

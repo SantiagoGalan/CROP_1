@@ -14,7 +14,7 @@ class Crop2(CropBaseModel):
             x_mix_filter_1, clip_value_min=0, clip_value_max=1
         )
         condition_encoder = self.predictor(x_mix_filter_1, verbose=0, training=False)
-
+    
         condition_decoder_1 = condition_encoder
 
         encoded_imgs = self.cvae.encoder(
