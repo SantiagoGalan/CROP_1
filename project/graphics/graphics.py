@@ -121,12 +121,12 @@ class Graphics:
                     label_text = None
 
                     # SOURCE1_GT
-                    if row_labels[row] == "Imagen original 1":
+                    if row_labels[row] == "Imagen \n original 1":
                         label_idx = np.argmax(source1_labels[col])
                         label_text = class_labels[label_idx]
 
                     # SOURCE2_GT
-                    elif row_labels[row] == "Imagen original 2":
+                    elif row_labels[row] == "Imagen \n original 2":
                         label_idx = np.argmax(source2_labels[col])
                         label_text = class_labels[label_idx]
 
@@ -156,6 +156,7 @@ class Graphics:
                             transform=ax.transAxes,
                         )
 
+        
 
         # Construir título automáticamente si se proporciona dataset
         if dataset is not None:
@@ -184,6 +185,13 @@ class Graphics:
                 fontsize=10,
             )
 
+        metric_name_map = {
+            "recon_bpsnr": "BPSNR",
+            "ssim": "SSIM",
+            "acc_at_least_one": "Precisión (al menos uno)",
+            "acc_both": "Precisión ambos objetos",
+        }
+
         if metrics is not None:
             metric_parts = []
 
@@ -191,16 +199,18 @@ class Graphics:
 
                 if k in ("predictions_1", "predictions_2", "best_prediction_source1", "mask_bpsnr"):
                     continue
+                
+                display_name = metric_name_map.get(k, k)
 
                 if isinstance(v, tuple) and len(v) == 2:
                     mean, std = v
-                    metric_parts.append(f"{k}={mean:.3f}")
+                    metric_parts.append(f"{display_name}={mean:.3f} ({std:.3f})")
 
                 elif isinstance(v, (int, float)):
-                    metric_parts.append(f"{k}={v:.3f}")
+                    metric_parts.append(f"{display_name}={v:.3f}")
 
                 else:
-                    metric_parts.append(f"{k}={v}")
+                    metric_parts.append(f"{display_name}={v}")
 
             metrics_text = "Resultados: " + " | ".join(metric_parts)
 

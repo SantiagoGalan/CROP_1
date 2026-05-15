@@ -6,19 +6,19 @@ import tensorflow as tf
 
 class Crop3(CropBaseModel):
 
-    def filter(self, filter_1, mixed_input, alpha,bias,slope): 
+    def filter(self, filter_1, mixed_input, alpha,bias,slope,delta): 
         #best_filtered_var_sigmoid
 
-        x_mix_filter_1 = tf.convert_to_tensor(2 * mixed_input - filter_1)
-        # x_mix_filter_1 = tf.clip_by_value(
-        #     x_mix_filter_1, clip_value_min=0, clip_value_max=1
-        # )
+        x_mix_filter_1 = 2 * mixed_input - filter_1
+        x_mix_filter_1 = tf.clip_by_value(
+            x_mix_filter_1, clip_value_min=0, clip_value_max=1
+        )
         condition_encoder = self.predictor(x_mix_filter_1, verbose=0, training=False)
-
+    
         condition_decoder_1 = condition_encoder
 
         encoded_imgs = self.cvae.encoder(
-            [x_mix_filter_1, condition_encoder], verbose=0, training=False
+            [x_mix_filter_1, condition_encoder], verbose=0, training=0
         )
 
         zz_log_var = encoded_imgs[1]  + alpha
@@ -28,11 +28,16 @@ class Crop3(CropBaseModel):
         mask_source1 = self.cvae.decoder(
             [z, condition_decoder_1], verbose=0, Training=False
         )
+
+        x__x = (self.source1_estimation+self.source2_estimation)/2
+        x__x_e = x__x - mixed_input
+        mask_source1 = mask_source1 - delta*(x__x_e)
+
+        self._show_images(x__x_e, f"Error  de mezclas  \n x__x_e - mix")
         mask_source1 = (mask_source1 - bias) * slope
         mask_source1 = tf.sigmoid(mask_source1)
 
-        x_mix_filter_1 =  2 * mixed_input * mask_source1
-        
+        x_mix_filter_1 = 2 * mixed_input * mask_source1
         x_mix_filter_1 = tf.clip_by_value(
             x_mix_filter_1, clip_value_min=0, clip_value_max=1
         )
@@ -48,12 +53,11 @@ class Crop3(CropBaseModel):
         bias = self.model_params["bias"]
         slope = self.model_params["slope"]
         gamma = self.model_params["gamma"]
-
-        bias_e = self.model_params["bias_e"]
-        slope_e = self.model_params["slope_e"]
+        delta = self.model_params["delta"]
         
+
         reconstructed_source1, mask_source1, predictions_1 = (
-            self.filter(self.source2_estimation, self.mixed_input, alpha_2,bias,slope)
+            self.filter(self.source2_estimation, self.mixed_input, alpha_2,bias,slope,delta)
         )
         
      
@@ -62,14 +66,11 @@ class Crop3(CropBaseModel):
         self.predictions1 = predictions_1 
         self.model_params["alpha_2"] = alpha_2 * beta
 
-        x__x = (self.source1_estimation + self.source2_estimation) / 2 # bien
+        x__x = (self.source1_estimation + self.source2_estimation) / 2
 
         x__x_e = x__x - self.mixed_input
 
-        x__x_e = (x__x_e - bias_e) * slope_e # buscar cuales son 
-        x__x_e = tf.sigmoid(x__x_e)
-
-        self.source1_estimation = self.source1_estimation - (x__x_e * gamma) # quizas cambiarlo 
+        self.source1_estimation = self.source1_estimation - (x__x_e * gamma)
 
         self.source1_estimation = tf.clip_by_value(
             self.source1_estimation, clip_value_min=0, clip_value_max=1
@@ -89,9 +90,6 @@ class Crop3(CropBaseModel):
         x__x = (self.source1_estimation + self.source2_estimation) / 2
         x__x_e = x__x - self.mixed_input
 
-        x__x_e = (x__x_e - bias_e) * slope_e
-        x__x_e = tf.sigmoid(x__x_e)
-        
         self.source2_estimation = self.source2_estimation - (x__x_e * gamma)
 
         self.source2_estimation = tf.clip_by_value(
