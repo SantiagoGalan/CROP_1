@@ -104,6 +104,7 @@ class CropBaseModel(ABC):
         self.source2_estimation=None
         self.predictions1=None
         self.predictions2=None
+        self.iteration=0
         ##metricas
         self.metrics={}
         
@@ -270,7 +271,9 @@ class CropBaseModel(ABC):
                 track_all=show_all_curves,
             )
         else:
-            for _ in range(iterations):
+            for i in range(iterations):
+                print("numero de iteracion: ",i)
+                self.iteration=i
                 self.decode()
             curves = None
 
@@ -307,7 +310,6 @@ class CropBaseModel(ABC):
             },
         }
 
-        # 🔥 agregar curvas al resultado
         if curves is not None:
             result.update({
                 "acc_both_plot": curves.get("acc_both", []),
@@ -411,7 +413,8 @@ class CropBaseModel(ABC):
             "mask_bpsnr": [],
         }
 
-        for _ in range(iterations):
+        for i in range(iterations):
+            self.iteration=i
             self.decode()
 
             if track_acc:

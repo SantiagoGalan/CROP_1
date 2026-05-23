@@ -32,8 +32,6 @@ class Crop3(CropBaseModel):
         x__x = (self.source1_estimation+self.source2_estimation)/2
         x__x_e = x__x - mixed_input
         mask_source1 = mask_source1 - delta*(x__x_e)
-
-        self._show_images(x__x_e, f"Error  de mezclas  \n x__x_e - mix")
         mask_source1 = (mask_source1 - bias) * slope
         mask_source1 = tf.sigmoid(mask_source1)
 
@@ -60,7 +58,6 @@ class Crop3(CropBaseModel):
             self.filter(self.source2_estimation, self.mixed_input, alpha_2,bias,slope,delta)
         )
         
-     
         self.source1_estimation = reconstructed_source1
         self.mask1 = mask_source1
         self.predictions1 = predictions_1 
@@ -78,7 +75,7 @@ class Crop3(CropBaseModel):
 
         reconstructed_source2, mask_source2, predictions_2 = (
             self.filter(
-                reconstructed_source1, self.mixed_input, alpha_1,bias,slope
+                reconstructed_source1, self.mixed_input, alpha_1,bias,slope,delta
             )
         )
         
