@@ -272,7 +272,7 @@ class CropBaseModel(ABC):
             )
         else:
             for i in range(iterations):
-                print("numero de iteracion: ",i)
+                #print("numero de iteracion: ",i)
                 self.iteration=i
                 self.decode()
             curves = None
