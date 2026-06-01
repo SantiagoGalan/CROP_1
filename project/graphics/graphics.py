@@ -270,7 +270,7 @@ class Graphics:
 
                 metric_name = label_map.get(series_name, series_name)
 
-                label = f"{metric_name}. último valor: {last_val:.3f}"
+                label = f"{metric_name}. último valor: {last_val:.4f}"
 
                 # sin markers
                 ax.plot(x, values, label=label)
