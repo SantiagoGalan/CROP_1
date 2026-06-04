@@ -243,6 +243,10 @@ class CropBaseModel(ABC):
     show_acc_curve=False,
     show_ssim_curve=False,
     show_psnr_curve=False,
+    save_all_curves=False,
+    save_acc_curve=False,
+    save_ssim_curve=False,
+    save_psnr_curve=False,
     curves_save_path=None,
 ):
 
@@ -254,8 +258,15 @@ class CropBaseModel(ABC):
 
         # -------------------- flags --------------------
         curves_requested = (
-            show_all_curves or show_acc_curve or show_ssim_curve or show_psnr_curve
-        )
+        show_all_curves
+        or show_acc_curve
+        or show_ssim_curve
+        or show_psnr_curve
+        or save_all_curves
+        or save_acc_curve
+        or save_ssim_curve
+        or save_psnr_curve
+         )
 
         # -------------------- iteraciones --------------------
         if curves_requested:
@@ -265,10 +276,25 @@ class CropBaseModel(ABC):
                 source1_cond=source1_labels,
                 source2_cond=source2_labels,
                 iterations=iterations,
-                track_acc=show_acc_curve or show_all_curves,
-                track_ssim=show_ssim_curve or show_all_curves,
-                track_psnr=show_psnr_curve or show_all_curves,
-                track_all=show_all_curves,
+                track_acc=(
+                    show_acc_curve
+                    or show_all_curves
+                    or save_acc_curve
+                    or save_all_curves
+                ),
+                track_ssim=(
+                    show_ssim_curve
+                    or show_all_curves
+                    or save_ssim_curve
+                    or save_all_curves
+                ),
+                track_psnr=(
+                    show_psnr_curve
+                    or show_all_curves
+                    or save_psnr_curve
+                    or save_all_curves
+                ),
+                track_all=show_all_curves or save_all_curves,
             )
         else:
             for i in range(iterations):
@@ -316,7 +342,6 @@ class CropBaseModel(ABC):
                 "acc_at_least_one_plot": curves.get("acc_at_least_one", []),
                 "ssim_plot": curves.get("ssim", []),
                 "psnr_plot": curves.get("recon_bpsnr", []),
-
             })
 
         # -------------------- imagen --------------------
@@ -341,7 +366,14 @@ class CropBaseModel(ABC):
             )
 
         # -------------------- curvas --------------------
-        if curves_requested:
+        plot_requested = (
+            show_all_curves
+            or show_acc_curve
+            or show_ssim_curve
+            or show_psnr_curve
+        )
+
+        if plot_requested:
             plot_data = {}
 
             if show_acc_curve or show_all_curves:
