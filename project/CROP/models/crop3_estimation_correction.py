@@ -31,7 +31,6 @@ class Crop3EstimationCorrection(CropBaseModel):
     
         x_mix_filter_1 = 2 * mixed_input * mask_source1
 
-
         x_mix_filter_1 = tf.clip_by_value(x_mix_filter_1, 0, 1) 
 
         x_mix_filter_1 = x_mix_filter_1 -(x_mix_filter_1-cvae_output)*delta
