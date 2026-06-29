@@ -106,10 +106,12 @@ class Loader:
             )
 
         # -------- load models --------
+
         encoder = load_model(enc_path, custom_objects={"Sampling": Sampling})
         decoder = load_model(dec_path)
 
         return CVAE(encoder, decoder, original_dim=28 * 28)
+
 
     # ---------- predictor ----------
 
