@@ -12,9 +12,9 @@ class Crop3EstimationCorrection(CropBaseModel):
 
         x_mix_filter_1 = tf.clip_by_value(x_mix_filter_1, 0, 1)
       
-        condition_encoder = self.predictor(x_mix_filter_1, verbose=0, training=False)
+        condition_encoder = self.predictor(x_mix_filter_1,  training=False)
         encoded_imgs = self.cvae.encoder(
-            [x_mix_filter_1, condition_encoder], verbose=0, training=0
+            [x_mix_filter_1, condition_encoder], training=False
         )
         
         zz_log_var = encoded_imgs[1] + alpha
@@ -22,7 +22,7 @@ class Crop3EstimationCorrection(CropBaseModel):
         z = Sampling()((encoded_imgs[0], zz_log_var))
 
         cvae_output = self.cvae.decoder(
-            [z, condition_encoder], verbose=0, Training=False
+            [z, condition_encoder],  training=False
         )
     
         mask_source1 = (cvae_output - bias) * slope

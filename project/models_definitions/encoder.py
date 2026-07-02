@@ -1,8 +1,10 @@
 from keras.layers import Input, Dense, Concatenate
 from keras.models import Model
+from keras.saving import register_keras_serializable
 from project.custom_layers.sampling import Sampling
 
 
+@register_keras_serializable(package="Project")
 class Encoder(Model):
     def __init__(
         self,
@@ -14,6 +16,11 @@ class Encoder(Model):
         **kwargs
     ):
         super().__init__(name=name, **kwargs)
+
+        self.img_dim = tuple(img_dim)
+        self.condition_dim = tuple(condition_dim)
+        self.intermediate_dim = intermediate_dim
+        self.latent_dim = latent_dim
 
         flat_dim = img_dim[0] * img_dim[1]
 
@@ -38,3 +45,15 @@ class Encoder(Model):
 
     def call(self, inputs, training=False):
         return self._model(inputs, training=training)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update(
+            {
+                "img_dim": self.img_dim,
+                "condition_dim": self.condition_dim,
+                "intermediate_dim": self.intermediate_dim,
+                "latent_dim": self.latent_dim,
+            }
+        )
+        return config

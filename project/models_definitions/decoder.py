@@ -1,7 +1,9 @@
 from keras.layers import Input, Dense, Concatenate
 from keras.models import Model
+from keras.saving import register_keras_serializable
 
 
+@register_keras_serializable(package="Project")
 class Decoder(Model):
     def __init__(
         self,
@@ -14,6 +16,10 @@ class Decoder(Model):
     ):
         super().__init__(name=name, **kwargs)
 
+        self.latent_dim = latent_dim
+        self.cond_dim = tuple(cond_dim)
+        self.intermediate_dim = intermediate_dim
+        self.original_shape = tuple(original_shape)
         self.original_dim = original_shape[0] * original_shape[1]
 
         # Inputs
@@ -34,3 +40,15 @@ class Decoder(Model):
 
     def call(self, inputs, training=False):
         return self._model(inputs, training=training)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update(
+            {
+                "latent_dim": self.latent_dim,
+                "cond_dim": self.cond_dim,
+                "intermediate_dim": self.intermediate_dim,
+                "original_shape": self.original_shape,
+            }
+        )
+        return config

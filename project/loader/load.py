@@ -5,6 +5,8 @@ from project.custom_layers.sampling import Sampling
 from project.custom_layers.reshapeLayer import ReshapeLayer
 from project.data.get_data import get_mnist_data
 from project.models_definitions.cvae import CVAE
+from project.models_definitions.decoder import Decoder
+from project.models_definitions.encoder import Encoder
 
 
 class Loader:
@@ -20,6 +22,69 @@ class Loader:
 
     # ---------- basic loaders ----------
 
+    @staticmethod
+    def _dims_from_model_path(path):
+        filename = os.path.basename(path)
+        parts = filename.split("_")
+        try:
+            int_dim = int(parts[parts.index("int") + 1])
+            lat_dim = int(parts[parts.index("lat") + 1])
+        except (ValueError, IndexError):
+            int_dim = None
+            lat_dim = None
+
+        return int_dim, lat_dim
+
+    @classmethod
+    def _encoder_custom_objects(cls, path=None):
+        int_dim, lat_dim = cls._dims_from_model_path(path or "")
+
+        if int_dim is None or lat_dim is None:
+            encoder_cls = Encoder
+        else:
+            class LegacyEncoder(Encoder):
+                def __init__(self, **kwargs):
+                    kwargs.pop("intermediate_dim", None)
+                    kwargs.pop("latent_dim", None)
+                    super().__init__(
+                        intermediate_dim=int_dim,
+                        latent_dim=lat_dim,
+                        **kwargs
+                    )
+
+            encoder_cls = LegacyEncoder
+
+        return {
+            "Sampling": Sampling,
+            "Custom>Sampling": Sampling,
+            "Encoder": encoder_cls,
+            "Custom>Encoder": encoder_cls,
+        }
+
+    @classmethod
+    def _decoder_custom_objects(cls, path=None):
+        int_dim, lat_dim = cls._dims_from_model_path(path or "")
+
+        if int_dim is None or lat_dim is None:
+            decoder_cls = Decoder
+        else:
+            class LegacyDecoder(Decoder):
+                def __init__(self, **kwargs):
+                    kwargs.pop("intermediate_dim", None)
+                    kwargs.pop("latent_dim", None)
+                    super().__init__(
+                        intermediate_dim=int_dim,
+                        latent_dim=lat_dim,
+                        **kwargs
+                    )
+
+            decoder_cls = LegacyDecoder
+
+        return {
+            "Decoder": decoder_cls,
+            "Custom>Decoder": decoder_cls,
+        }
+
     @classmethod
     def encoder(cls, lat=None, inter=None, dataset=None, name=None):
         if name is not None:
@@ -30,7 +95,7 @@ class Loader:
                 f"en_int_{inter}_lat_{lat}_{dataset}.keras"
             )
 
-        return load_model(path, custom_objects={"Sampling": Sampling})
+        return load_model(path, custom_objects=cls._encoder_custom_objects(path))
 
     @classmethod
     def decoder(cls, lat=None, inter=None, dataset=None, name=None):
@@ -42,7 +107,7 @@ class Loader:
                 f"de_int_{inter}_lat_{lat}_{dataset}.keras"
             )
 
-        return load_model(path)
+        return load_model(path, custom_objects=cls._decoder_custom_objects(path))
 
     # ---------- CVAE ----------
 
@@ -107,8 +172,14 @@ class Loader:
 
         # -------- load models --------
 
-        encoder = load_model(enc_path, custom_objects={"Sampling": Sampling})
-        decoder = load_model(dec_path)
+        encoder = load_model(
+            enc_path,
+            custom_objects=cls._encoder_custom_objects(enc_path)
+        )
+        decoder = load_model(
+            dec_path,
+            custom_objects=cls._decoder_custom_objects(dec_path)
+        )
 
         return CVAE(encoder, decoder, original_dim=28 * 28)
 
@@ -138,30 +209,46 @@ class Loader:
     @staticmethod
     def parse_dims_from_key(key):
         parts = key.split("_")
-        return int(parts[0]), int(parts[2])
+        return int(parts[parts.index("int") + 1]), int(parts[parts.index("lat") + 1])
+
+    @staticmethod
+    def _model_pair_key(filename):
+        if not filename.endswith(".keras"):
+            return None
+        if filename.startswith("en_") or filename.startswith("de_"):
+            return filename[3:]
+        return None
 
     @classmethod
     def all_cvaes(cls, dataset, lat=None, inter=None):
         encoder_files = os.listdir(cls.ENCODERS_DIR)
         decoder_files = os.listdir(cls.DECODERS_DIR)
 
-        def key(f):
-            return "_".join(f.split("_")[2:])
-
         encoders = {
-            key(f): os.path.join(cls.ENCODERS_DIR, f)
+            pair_key: os.path.join(cls.ENCODERS_DIR, f)
             for f in encoder_files
-            if f.endswith(f"{dataset}.keras")
+            if (pair_key := cls._model_pair_key(f)) is not None
+            and pair_key.endswith(f"_{dataset}.keras")
         }
 
         decoders = {
-            key(f): os.path.join(cls.DECODERS_DIR, f)
+            pair_key: os.path.join(cls.DECODERS_DIR, f)
             for f in decoder_files
-            if f.endswith(f"{dataset}.keras")
+            if (pair_key := cls._model_pair_key(f)) is not None
+            and pair_key.endswith(f"_{dataset}.keras")
         }
 
+        missing_decoders = sorted(set(encoders) - set(decoders))
+        missing_encoders = sorted(set(decoders) - set(encoders))
+        if missing_decoders or missing_encoders:
+            raise FileNotFoundError(
+                f"Incomplete CVAE pairs for dataset '{dataset}'. "
+                f"Missing decoders for: {missing_decoders}. "
+                f"Missing encoders for: {missing_encoders}."
+            )
+
         models = []
-        for k in set(encoders) & set(decoders):
+        for k in sorted(encoders):
             int_dim, lat_dim = cls.parse_dims_from_key(k)
 
             if inter and int_dim != inter:
@@ -169,14 +256,20 @@ class Loader:
             if lat and lat_dim != lat:
                 continue
 
-            encoder = load_model(encoders[k], custom_objects={"Sampling": Sampling})
-            decoder = load_model(decoders[k])
+            encoder = load_model(
+                encoders[k],
+                custom_objects=cls._encoder_custom_objects(encoders[k])
+            )
+            decoder = load_model(
+                decoders[k],
+                custom_objects=cls._decoder_custom_objects(decoders[k])
+            )
 
             cvae = CVAE(
                 encoder,
                 decoder,
                 original_dim=28 * 28,
-                name=f"cvae_int_{int_dim}_lat_{lat_dim}",
+                name=f"cvae_{k.removesuffix('.keras')}",
             )
             cvae.compile(optimizer="adam")
             models.append(cvae)

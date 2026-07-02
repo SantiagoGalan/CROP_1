@@ -13,12 +13,12 @@ class Crop2(CropBaseModel):
         x_mix_filter_1 = tf.clip_by_value(
             x_mix_filter_1, clip_value_min=0, clip_value_max=1
         )
-        condition_encoder = self.predictor(x_mix_filter_1, verbose=0, training=False)
+        condition_encoder = self.predictor(x_mix_filter_1, training=False)
     
         condition_decoder_1 = condition_encoder
 
         encoded_imgs = self.cvae.encoder(
-            [x_mix_filter_1, condition_encoder], verbose=0, training=0
+            [x_mix_filter_1, condition_encoder], training=0
         )
 
         zz_log_var = encoded_imgs[1]  + alpha
@@ -26,7 +26,7 @@ class Crop2(CropBaseModel):
         z = Sampling()((encoded_imgs[0], zz_log_var))
 
         mask_source1 = self.cvae.decoder(
-            [z, condition_decoder_1], verbose=0, Training=False
+            [z, condition_decoder_1], training=0
         )
         mask_source1 = (mask_source1 - bias) * slope
         mask_source1 = tf.sigmoid(mask_source1)
