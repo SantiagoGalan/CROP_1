@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 from project.CROP.models.crop_base_model import CropBaseModel
 from project.custom_layers.sampling import Sampling
@@ -10,12 +11,12 @@ class Crop1(CropBaseModel):
         x_mix_filter_1 = tf.clip_by_value(
             x_mix_filter_1, clip_value_min=0, clip_value_max=1
         )
-        condition_encoder = self.predictor(x_mix_filter_1, verbose=0, training=False)
+        condition_encoder = self.predictor(x_mix_filter_1,  training=False)
 
         condition_decoder_1 = condition_encoder
 
         encoded_imgs = self.cvae.encoder(
-            [x_mix_filter_1, condition_encoder], verbose=0, training=0
+            [x_mix_filter_1, condition_encoder],training=False
         )
 
         zz_log_var = encoded_imgs[1] + alpha
@@ -23,7 +24,7 @@ class Crop1(CropBaseModel):
         z = Sampling()((encoded_imgs[0], zz_log_var))
 
         mask_source1 = self.cvae.decoder(
-            [z, condition_decoder_1], verbose=0, Training=False
+            [z, condition_decoder_1], training=False
         )
         mask_source1 = (mask_source1 - bias) * slope
         mask_source1 = tf.sigmoid(mask_source1)
@@ -43,7 +44,7 @@ class Crop1(CropBaseModel):
         beta = self.model_params["beta"]
         bias = self.model_params["bias"]
         slope = self.model_params["slope"]
-        
+        j = self.iteration
         # Estimación de la fuente 1
         reconstructed_source1, mask_source1, predictions_1 = (
             self.filter(self.source2_estimation, self.mixed_input, alpha_2,bias,slope)
@@ -52,7 +53,11 @@ class Crop1(CropBaseModel):
         self.source1_estimation = reconstructed_source1
         self.mask1 = mask_source1
         self.predictions1 = predictions_1 
-        self.model_params["alpha_2"] = alpha_2 * beta
+        #self.model_params["alpha_2"] = alpha_2 * beta
+        
+        alpha_2 += -20.0 * (-1.0)**j
+        alpha_2 = np.clip(alpha_2, -50, 50)
+        self.model_params["alpha_2"]
 
         # Estimación de la fuente 2
         reconstructed_source2, mask_source2, predictions_2 = (
@@ -63,6 +68,8 @@ class Crop1(CropBaseModel):
         self.source2_estimation = reconstructed_source2
         self.mask2 = mask_source2
         self.predictions2 = predictions_2 
-        self.model_params["alpha_1"] = alpha_1 * beta
-
+        #self.model_params["alpha_1"] = alpha_1 * beta
+        alpha_1 += -20.0 * (-1.0)**j
+        alpha_1 = np.clip(alpha_1, -50, 50)
+        self.model_params["alpha_1"]
         return
