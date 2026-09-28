@@ -70,7 +70,7 @@ class Crop2(CropBaseModel):
 
         reconstructed_source2, mask_source2, predictions_2 = (
             self.filter(
-                reconstructed_source1, self.mixed_input, alpha_1,bias,slope
+                self.source1_estimation , self.mixed_input, alpha_1,bias,slope
             )
         )
         

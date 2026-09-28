@@ -1,7 +1,8 @@
 
+import keras
 from keras.layers import Layer
 import tensorflow as tf
-
+@keras.saving.register_keras_serializable()
 class ReshapeLayer(Layer):
     def __init__(self, target_shape, **kwargs):
         super(ReshapeLayer, self).__init__(**kwargs)
