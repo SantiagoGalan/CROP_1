@@ -52,12 +52,12 @@ class Graphics:
             "Imagen \n mezcla",
             "Imagen \n original 1",
             "Imagen \n original 2",
-            "Estimacion 1",
-            "Estimacion 2",
+            "Estimación 1",
+            "Estimación 2",
             "Mezcla \n estimada",
             "Error entre \n mezclas",
-            "Mascara 1",
-            "Mascara 2",
+            "Máscara 1",
+            "Máscara 2",
             #"Mejor estimación",
         ]
 
@@ -186,7 +186,7 @@ class Graphics:
             )
 
         metric_name_map = {
-            "recon_bpsnr": "BPSNR",
+            "recon_bpsnr": "PSNR",
             "ssim": "SSIM",
             "acc_at_least_one": "Precisión (al menos uno)",
             "acc_both": "Precisión ambos objetos",
