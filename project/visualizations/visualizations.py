@@ -108,48 +108,6 @@ def lattent_space(cvae, dataset):
     plt.title("Espacio latente (entrada real al decoder)")
     plt.show()
 
-
-def latent_space_tsne(cvae, dataset, max_samples=10000, save_path=None):
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from sklearn.manifold import TSNE
-
-    z_all = []
-    y_all = []
-    count = 0
-    for (batch, labels), _ in dataset:
-        batch = np.array(batch)
-        labels = np.array(labels)
-        if batch.ndim == 1:
-            batch = np.expand_dims(batch, axis=0)
-        if labels.ndim == 1:
-            labels = np.expand_dims(labels, axis=0)
-        z_mean, _, z = cvae.encoder.predict([batch, labels], verbose=0)
-        z_input = np.concatenate([z, labels], axis=1)
-        z_all.append(z_input)
-        y_all.append(labels)
-        count += len(batch)
-        # print(count)
-        if count >= max_samples:
-            break
-
-    z_all = np.concatenate(z_all, axis=0)
-    y_all = np.argmax(np.concatenate(y_all, axis=0), axis=1)
-
-    # t-SNE para reducir a 2D
-    tsne = TSNE(n_components=2, random_state=42, perplexity=30)
-    z_tsne = tsne.fit_transform(z_all)
-
-    plt.figure(figsize=(8, 6))
-    plt.scatter(z_tsne[:, 0], z_tsne[:, 1], c=y_all, cmap="tab10", alpha=0.5, s=5)
-    plt.colorbar(label="Etiqueta")
-    plt.xlabel("t-SNE [0]")
-    plt.ylabel("t-SNE [1]")
-    plt.title("Espacio latente con t-SNE")
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches="tight")
-    plt.show()
-
 def latent_space_umap(
     cvae,
     dataset,
