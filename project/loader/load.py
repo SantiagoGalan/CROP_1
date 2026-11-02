@@ -112,37 +112,12 @@ class Loader:
     # ---------- CVAE ----------
 
     @classmethod
-    def cvae(
-        cls,
-        lat=None,
-        inter=None,
-        dataset=None,
-        encoder_name=None,
-        decoder_name=None,
-        model_name=None,
-    ):
-        if model_name is not None:
-            encoder_name = f"en_{model_name}"
-            decoder_name = f"de_{model_name}"
+    def cvae(cls, model_name):
+        if not isinstance(model_name, str) or not model_name.strip():
+            raise ValueError("model_name must be a non-empty string.")
 
-        if encoder_name and decoder_name:
-            enc_path = os.path.join(cls.ENCODERS_DIR, encoder_name)
-            dec_path = os.path.join(cls.DECODERS_DIR, decoder_name)
-
-        elif lat is not None and inter is not None and dataset is not None:
-            enc_path = os.path.join(
-                cls.ENCODERS_DIR,
-                f"en_int_{inter}_lat_{lat}_{dataset}.keras"
-            )
-            dec_path = os.path.join(
-                cls.DECODERS_DIR,
-                f"de_int_{inter}_lat_{lat}_{dataset}.keras"
-            )
-        else:
-            raise ValueError(
-                "Invalid combination of arguments. "
-                "Use (lat, inter, dataset) or (encoder_name & decoder_name) or model_name."
-            )
+        enc_path = os.path.join(cls.ENCODERS_DIR, f"en_{model_name}")
+        dec_path = os.path.join(cls.DECODERS_DIR, f"de_{model_name}")
 
         # -------- validation --------
         missing = []
