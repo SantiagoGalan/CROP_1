@@ -1,4 +1,7 @@
 import numpy as np
+import json
+from datetime import datetime, timezone
+from pathlib import Path
 from project.graphics.graphics import Graphics
 from project.metrics.metrics import Metrics
 from abc import abstractmethod, ABC
@@ -248,17 +251,26 @@ class CropBaseModel(ABC):
     save_ssim_curve=False,
     save_psnr_curve=False,
     curves_save_path=None,
+    data_save_path=None,
+    run_metadata=None,
 ):
+        """Run separation; optionally persist plotting data and run metadata as JSON.
+
+        data_save_path also records all iteration curves without requiring plots.
+        Non-finite numbers are encoded as {"__float__": "inf"/"-inf"/"nan"}.
+        """
 
         # -------------------- params --------------------
         self.model_params = {**self.default_params.copy(), **(params or {})}
+        initial_params = self.model_params.copy()
 
         # -------------------- mix --------------------
         self.mix(source1_gt, source2_gt, self.model_params)
 
         # -------------------- flags --------------------
         curves_requested = (
-        show_all_curves
+        data_save_path is not None
+        or show_all_curves
         or show_acc_curve
         or show_ssim_curve
         or show_psnr_curve
@@ -277,24 +289,27 @@ class CropBaseModel(ABC):
                 source2_cond=source2_labels,
                 iterations=iterations,
                 track_acc=(
-                    show_acc_curve
+                    data_save_path is not None
+                    or show_acc_curve
                     or show_all_curves
                     or save_acc_curve
                     or save_all_curves
                 ),
                 track_ssim=(
-                    show_ssim_curve
+                    data_save_path is not None
+                    or show_ssim_curve
                     or show_all_curves
                     or save_ssim_curve
                     or save_all_curves
                 ),
                 track_psnr=(
-                    show_psnr_curve
+                    data_save_path is not None
+                    or show_psnr_curve
                     or show_all_curves
                     or save_psnr_curve
                     or save_all_curves
                 ),
-                track_all=show_all_curves or save_all_curves,
+                track_all=data_save_path is not None or show_all_curves or save_all_curves,
             )
         else:
             for i in range(iterations):
@@ -343,6 +358,41 @@ class CropBaseModel(ABC):
                 "ssim_plot": curves.get("ssim", []),
                 "psnr_plot": curves.get("recon_bpsnr", []),
             })
+
+        if data_save_path is not None:
+            payload = {
+                "schema_version": 1,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "model": {
+                    "crop_class": f"{type(self).__module__}.{type(self).__name__}",
+                    "cvae": getattr(self.cvae, "loaded_model_name", self.cvae.name),
+                    "predictor": getattr(self.predictor, "loaded_model_name", self.predictor.name),
+                },
+                "iterations": iterations,
+                "model_params": initial_params,
+                "final_model_params": self.model_params.copy(),
+                "metadata": run_metadata or {},
+                "curves": curves,
+                "metrics": metrics,
+                "images": {
+                    "mixed_input": self.mixed_input,
+                    "source1_gt": source1_gt,
+                    "source2_gt": source2_gt,
+                    "source1_labels": source1_labels,
+                    "source2_labels": source2_labels,
+                    "source1_estimation": self.source1_estimation,
+                    "source2_estimation": self.source2_estimation,
+                    "mask1": self.mask1,
+                    "mask2": self.mask2,
+                    "predictions1": self.predictions1,
+                    "predictions2": self.predictions2,
+                    "class_labels": labels,
+                },
+            }
+            path = Path(data_save_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("w", encoding="utf-8") as file:
+                json.dump(self._json_data(payload), file, ensure_ascii=False, allow_nan=False)
 
         # -------------------- imagen --------------------
         if show_image:
@@ -415,6 +465,23 @@ class CropBaseModel(ABC):
         self.model_params = self.default_params.copy()
 
         return result
+
+    @staticmethod
+    def _json_data(value):
+        """Convert NumPy arrays, eager tensors and scalars to portable JSON data."""
+        if hasattr(value, "numpy"):
+            value = value.numpy()
+        if isinstance(value, np.ndarray):
+            value = value.tolist()
+        if isinstance(value, np.generic):
+            value = value.item()
+        if isinstance(value, dict):
+            return {key: CropBaseModel._json_data(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [CropBaseModel._json_data(item) for item in value]
+        if isinstance(value, float) and not np.isfinite(value):
+            return {"__float__": str(value)}
+        return value
 
     def _params_text(self, model_params):
         parts = []

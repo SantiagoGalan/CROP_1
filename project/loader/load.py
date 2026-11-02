@@ -156,7 +156,9 @@ class Loader:
             custom_objects=cls._decoder_custom_objects(dec_path)
         )
 
-        return CVAE(encoder, decoder, original_dim=28 * 28)
+        cvae = CVAE(encoder, decoder, original_dim=28 * 28)
+        cvae.loaded_model_name = model_name
+        return cvae
 
 
     # ---------- predictor ----------
@@ -177,7 +179,9 @@ class Loader:
         else:
             raise ValueError("dataset, model_name or model_path required")
 
-        return load_model(path, custom_objects={"ReshapeLayer": ReshapeLayer})
+        predictor = load_model(path, custom_objects={"ReshapeLayer": ReshapeLayer})
+        predictor.loaded_model_name = os.path.basename(path)
+        return predictor
 
     # ---------- utilities ----------
 
