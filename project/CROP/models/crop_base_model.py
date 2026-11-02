@@ -1,5 +1,6 @@
 import numpy as np
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from project.graphics.graphics import Graphics
@@ -73,9 +74,7 @@ class CropBaseModel(ABC):
         # Caso 3: parámetros clásicos
         elif lat is not None and inter is not None and dataset is not None:
             self.cvae = Loader.cvae(
-                lat=lat,
-                inter=inter,
-                dataset=dataset,
+                model_name=f"int_{inter}_lat_{lat}_{dataset}.keras",
             )
 
         else:
@@ -253,6 +252,8 @@ class CropBaseModel(ABC):
     curves_save_path=None,
     data_save_path=None,
     run_metadata=None,
+    data_save_dir=None,
+    notebook_name=None,
 ):
         """Run separation; optionally persist plotting data and run metadata as JSON.
 
@@ -263,6 +264,23 @@ class CropBaseModel(ABC):
         # -------------------- params --------------------
         self.model_params = {**self.default_params.copy(), **(params or {})}
         initial_params = self.model_params.copy()
+        if data_save_dir is not None:
+            if data_save_path is not None:
+                raise ValueError("Use data_save_path or data_save_dir, not both.")
+            if not notebook_name:
+                raise ValueError("notebook_name is required with data_save_dir.")
+            model_name = getattr(self.cvae, "loaded_model_name", self.cvae.name)
+            def filename_part(value):
+                return re.sub(r"[^\w.\-]+", "-", str(value))
+            filename = (
+                f"{filename_part(Path(notebook_name).stem)}_"
+                f"{filename_part(type(self).__name__)}_"
+                f"{filename_part(Path(model_name).stem)}_"
+                f"gamma_{filename_part(initial_params.get('gamma', 'NA'))}_"
+                f"delta_{filename_part(initial_params.get('delta', 'NA'))}_"
+                f"{datetime.now(timezone.utc):%Y%m%d_%H%M%S_%f}.json"
+            )
+            data_save_path = Path(data_save_dir) / filename
 
         # -------------------- mix --------------------
         self.mix(source1_gt, source2_gt, self.model_params)
@@ -361,38 +379,48 @@ class CropBaseModel(ABC):
 
         if data_save_path is not None:
             payload = {
-                "schema_version": 1,
-                "created_at": datetime.now(timezone.utc).isoformat(),
                 "model": {
                     "crop_class": f"{type(self).__module__}.{type(self).__name__}",
                     "cvae": getattr(self.cvae, "loaded_model_name", self.cvae.name),
                     "predictor": getattr(self.predictor, "loaded_model_name", self.predictor.name),
                 },
-                "iterations": iterations,
-                "model_params": initial_params,
-                "final_model_params": self.model_params.copy(),
-                "metadata": run_metadata or {},
-                "curves": curves,
-                "metrics": metrics,
-                "images": {
-                    "mixed_input": self.mixed_input,
-                    "source1_gt": source1_gt,
-                    "source2_gt": source2_gt,
-                    "source1_labels": source1_labels,
-                    "source2_labels": source2_labels,
-                    "source1_estimation": self.source1_estimation,
-                    "source2_estimation": self.source2_estimation,
-                    "mask1": self.mask1,
-                    "mask2": self.mask2,
-                    "predictions1": self.predictions1,
-                    "predictions2": self.predictions2,
-                    "class_labels": labels,
+                "parameters": {
+                    "iterations": iterations,
+                    "model_params": initial_params,
+                    "final_model_params": self.model_params.copy(),
+                },
+                "last_results": {
+                    "acc_both": curves["acc_both"][-1] if curves and curves["acc_both"] else metrics["acc_both"],
+                    "psnr": curves["recon_bpsnr"][-1] if curves and curves["recon_bpsnr"] else metrics["recon_bpsnr"][0],
+                    "ssim": curves["ssim"][-1] if curves and curves["ssim"] else metrics["ssim"][0],
+                },
+                "data": {
+                    "schema_version": 2,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "notebook_name": notebook_name,
+                    "metadata": run_metadata or {},
+                    "curves": curves,
+                    "metrics": metrics,
+                    "images": {
+                        "mixed_input": self.mixed_input,
+                        "source1_gt": source1_gt,
+                        "source2_gt": source2_gt,
+                        "source1_labels": source1_labels,
+                        "source2_labels": source2_labels,
+                        "source1_estimation": self.source1_estimation,
+                        "source2_estimation": self.source2_estimation,
+                        "mask1": self.mask1,
+                        "mask2": self.mask2,
+                        "predictions1": self.predictions1,
+                        "predictions2": self.predictions2,
+                        "class_labels": labels,
+                    },
                 },
             }
             path = Path(data_save_path)
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("w", encoding="utf-8") as file:
-                json.dump(self._json_data(payload), file, ensure_ascii=False, allow_nan=False)
+                json.dump(self._json_data(payload), file, ensure_ascii=False, allow_nan=False, indent=2)
 
         # -------------------- imagen --------------------
         if show_image:
