@@ -59,11 +59,7 @@ class Crop3EstimationCorrection(CropBaseModel):
         self.source1_estimation = reconstructed_source1
         self.mask1 = mask_source1
         self.predictions1 = predictions_1
-#        self.model_params["alpha_2"] = alpha_2 * beta
-
-        alpha_2 += -20.0 * (-1.0)**j
-        alpha_2 = np.clip(alpha_2, -50, 50)
-        self.model_params["alpha_2"]
+        self.model_params["alpha_2"] = alpha_2 * beta
 
         x__x = (self.source1_estimation + self.source2_estimation) / 2
         x__x_e = x__x - self.mixed_input
@@ -78,12 +74,8 @@ class Crop3EstimationCorrection(CropBaseModel):
         self.source2_estimation = reconstructed_source2
         self.mask2 = mask_source2
         self.predictions2 = predictions_2
-        #self.model_params["alpha_1"] = alpha_1 * beta
+        self.model_params["alpha_1"] = alpha_1 * beta
 
-        alpha_1 += -20.0 * (-1.0)**j
-        alpha_1 = np.clip(alpha_1, -50, 50)
-        self.model_params["alpha_1"]
-        
 
 
         x__x = (self.source1_estimation + self.source2_estimation) / 2
