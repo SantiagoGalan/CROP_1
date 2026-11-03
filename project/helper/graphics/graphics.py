@@ -390,7 +390,7 @@ def plot_unmix_comparison(results_by_name, save_dir=None, show=True):
 
     Example:
         crop2 = load_unmix_curves("data/comparison_Crop2_*.json")
-        crop3 = load_unmix_curves("data/comparison_Crop3EstimationCorrection_*.json")
+        crop3 = load_unmix_curves("data/comparison_Crop3_*.json")
         plot_unmix_comparison({"Crop2": crop2, "Crop3": crop3})
 
     Use specific paths or patterns to select one model/parameter configuration.

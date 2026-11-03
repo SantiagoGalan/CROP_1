@@ -8,7 +8,7 @@ from project.custom_layers.sampling import Sampling
 import tensorflow as tf
 
 
-class Crop3EstimationCorrection(CropBaseModel):
+class Crop3(CropBaseModel):
 
     def filter(self, filter_1 ,mixed_input, alpha, bias, slope,delta):
 

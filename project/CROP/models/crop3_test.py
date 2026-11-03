@@ -9,7 +9,7 @@ from project.custom_layers.sampling import Sampling
 
 
 class crop3test(CropBaseModel):
-    """Copia experimental de Crop3EstimationCorrection; no modifica el modelo original."""
+    """Copia experimental de Crop3; no modifica el modelo original."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -11,7 +11,7 @@
   - Optimizar umbral, tamaño de vecindario e intensidad de compresión en validación; comparar precisión, SSIM, PSNR y error de consistencia de mezcla en evaluación reservada.
   - Estado: hipótesis pendiente; sin cambios al modelo ni resultados experimentales.
 
-- [ ] Evaluar la corrección de estimación solo en zonas saturadas de `project/CROP/models/crop3_estimation_correction.py`.
+- [ ] Evaluar la corrección de estimación solo en zonas saturadas de `project/CROP/models/crop3.py`.
   - Detectar la zona saturada antes del `clip`: `saturated = raw > 1.0`, con `raw = 2 * mixed_input * mask_source1`.
   - Obtener `filtrado = tf.clip_by_value(raw, 0, 1)`.
   - En esa zona, guardar la ponderación `(1 - delta) * filtrado + delta * cvae_output`, usando `tf.where(saturated, corrected, filtrado)`.
