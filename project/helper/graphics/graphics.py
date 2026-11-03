@@ -326,3 +326,118 @@ class Graphics:
             plt.axis("off")
         plt.suptitle("Reconstrucciones bajo distintas condiciones")
         plt.show()
+
+
+def load_unmix_curves(paths):
+    """Load matching JSON runs and compute mean/std curves without running unmix.
+
+    paths accepts a file, a glob pattern, or an iterable of files. All runs must
+    use the same models, initial parameters and number of iterations.
+    """
+    import glob
+    import json
+    from pathlib import Path
+
+    if isinstance(paths, (str, Path)):
+        files = [Path(name) for name in sorted(glob.glob(str(paths)))]
+    else:
+        files = sorted(Path(name) for name in paths)
+    files = list(dict.fromkeys(files))
+    if not files:
+        raise FileNotFoundError(f"No se encontraron corridas: {paths}")
+
+    runs = {"acc": [], "ssim": [], "psnr": []}
+    reference = None
+    for path in files:
+        with path.open(encoding="utf-8") as file:
+            payload = json.load(file)
+        data = payload.get("data", payload)
+        parameters = payload.get("parameters", payload)
+        identity = (payload["model"], parameters["model_params"], parameters["iterations"])
+        if reference is None:
+            reference = identity
+        elif identity != reference:
+            raise ValueError(f"Modelos, parámetros o iteraciones diferentes en {path}")
+        curves = data["curves"]
+        for metric, key in (("acc", "acc_both"), ("ssim", "ssim"), ("psnr", "recon_bpsnr")):
+            values = curves.get(key, []) if curves else []
+            try:
+                values = np.asarray(values, dtype=float)
+            except (TypeError, ValueError) as error:
+                raise ValueError(f"Curva {key} no numérica en {path}") from error
+            if values.ndim != 1 or len(values) != parameters["iterations"] or not len(values):
+                raise ValueError(f"Curva {key} incompleta en {path}")
+            if not np.isfinite(values).all():
+                raise ValueError(f"Curva {key} con valores no finitos en {path}")
+            runs[metric].append(values)
+
+    results = {
+        "model": reference[0],
+        "model_params": reference[1],
+        "n_runs": len(files),
+        "files": [str(path) for path in files],
+    }
+    for metric, values in runs.items():
+        values = np.asarray(values)
+        results[metric] = values
+        results[f"mean_{metric}"] = values.mean(axis=0)
+        results[f"std_{metric}"] = values.std(axis=0)
+    return results
+
+
+def plot_unmix_comparison(results_by_name, save_dir=None, show=True):
+    """Plot loaded runs as in comparison.ipynb, with model/parameter footnotes.
+
+    Example:
+        crop2 = load_unmix_curves("data/comparison_Crop2_*.json")
+        crop3 = load_unmix_curves("data/comparison_Crop3EstimationCorrection_*.json")
+        plot_unmix_comparison({"Crop2": crop2, "Crop3": crop3})
+
+    Use specific paths or patterns to select one model/parameter configuration.
+    Returns the three figures; save_dir optionally saves PNG copies.
+    """
+    from pathlib import Path
+    import textwrap
+
+    if not results_by_name:
+        raise ValueError("Se necesita al menos un conjunto de curvas.")
+    footnotes = []
+    for name, results in results_by_name.items():
+        model = results["model"]
+        params = " | ".join(f"{key}={value}" for key, value in results["model_params"].items())
+        description = (
+            f"{name}: {model['crop_class'].split('.')[-1]} | CVAE: {model['cvae']} | "
+            f"Predictor: {model['predictor']} | {results['n_runs']} corridas\n{params}"
+        )
+        footnotes.extend(textwrap.wrap(line, width=115) for line in description.splitlines())
+    footer = "\n".join(line for group in footnotes for line in group)
+    footer_height = 0.18 * len(footer.splitlines()) + 0.35
+    run_counts = {result["n_runs"] for result in results_by_name.values()}
+    run_text = (f"{next(iter(run_counts))} corridas" if len(run_counts) == 1
+                else ", ".join(f"{name}: {result['n_runs']} corridas" for name, result in results_by_name.items()))
+    figures = {}
+    for metric, title, ylabel in (
+        ("acc", "Exactitud media", "Exactitud [%]"),
+        ("ssim", "SSIM medio", "SSIM"),
+        ("psnr", "PSNR medio", "PSNR"),
+    ):
+        fig, ax = plt.subplots(figsize=(9, 6 + footer_height))
+        for name, results in results_by_name.items():
+            mean = results[f"mean_{metric}"]
+            std = results[f"std_{metric}"]
+            x = np.arange(len(mean))
+            line, = ax.plot(x, mean, label=f"{name} (Máx: {mean.max():.3f}, Último: {mean[-1]:.3f})")
+            ax.fill_between(x, mean - std, mean + std, color=line.get_color(), alpha=0.2)
+        ax.grid()
+        ax.set(title=f"{title} vs iteraciones · {run_text}", xlabel="Iteración", ylabel=ylabel)
+        ax.legend()
+        fig.tight_layout(rect=(0, footer_height / (6 + footer_height), 1, 1))
+        fig.text(0.02, 0.02, footer, ha="left", va="bottom", fontsize=8)
+        if save_dir is not None:
+            directory = Path(save_dir)
+            directory.mkdir(parents=True, exist_ok=True)
+            fig.savefig(directory / f"comparison_{metric}.png", bbox_inches="tight")
+        figures[metric] = fig
+    if show:
+        plt.show()
+    return figures

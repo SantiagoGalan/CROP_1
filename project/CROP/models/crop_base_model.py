@@ -1,9 +1,6 @@
 import numpy as np
-import json
-import re
-from datetime import datetime, timezone
-from pathlib import Path
-from project.graphics.graphics import Graphics
+from project.helper.save_data import resolve_unmix_save_path, save_unmix_data
+from project.helper.graphics.graphics import Graphics
 from project.metrics.metrics import Metrics
 from abc import abstractmethod, ABC
 from project.loader import Loader
@@ -264,23 +261,14 @@ class CropBaseModel(ABC):
         # -------------------- params --------------------
         self.model_params = {**self.default_params.copy(), **(params or {})}
         initial_params = self.model_params.copy()
-        if data_save_dir is not None:
-            if data_save_path is not None:
-                raise ValueError("Use data_save_path or data_save_dir, not both.")
-            if not notebook_name:
-                raise ValueError("notebook_name is required with data_save_dir.")
-            model_name = getattr(self.cvae, "loaded_model_name", self.cvae.name)
-            def filename_part(value):
-                return re.sub(r"[^\w.\-]+", "-", str(value))
-            filename = (
-                f"{filename_part(Path(notebook_name).stem)}_"
-                f"{filename_part(type(self).__name__)}_"
-                f"{filename_part(Path(model_name).stem)}_"
-                f"gamma_{filename_part(initial_params.get('gamma', 'NA'))}_"
-                f"delta_{filename_part(initial_params.get('delta', 'NA'))}_"
-                f"{datetime.now(timezone.utc):%Y%m%d_%H%M%S_%f}.json"
-            )
-            data_save_path = Path(data_save_dir) / filename
+        data_save_path = resolve_unmix_save_path(
+            data_save_path,
+            data_save_dir=data_save_dir,
+            notebook_name=notebook_name,
+            model_name=getattr(self.cvae, "loaded_model_name", self.cvae.name),
+            crop_name=type(self).__name__,
+            initial_params=initial_params,
+        )
 
         # -------------------- mix --------------------
         self.mix(source1_gt, source2_gt, self.model_params)
@@ -378,49 +366,35 @@ class CropBaseModel(ABC):
             })
 
         if data_save_path is not None:
-            payload = {
-                "model": {
+            save_unmix_data(
+                data_save_path,
+                model={
                     "crop_class": f"{type(self).__module__}.{type(self).__name__}",
                     "cvae": getattr(self.cvae, "loaded_model_name", self.cvae.name),
                     "predictor": getattr(self.predictor, "loaded_model_name", self.predictor.name),
                 },
-                "parameters": {
-                    "iterations": iterations,
-                    "model_params": initial_params,
-                    "final_model_params": self.model_params.copy(),
+                iterations=iterations,
+                initial_params=initial_params,
+                final_params=self.model_params,
+                curves=curves,
+                metrics=metrics,
+                images={
+                    "mixed_input": self.mixed_input,
+                    "source1_gt": source1_gt,
+                    "source2_gt": source2_gt,
+                    "source1_labels": source1_labels,
+                    "source2_labels": source2_labels,
+                    "source1_estimation": self.source1_estimation,
+                    "source2_estimation": self.source2_estimation,
+                    "mask1": self.mask1,
+                    "mask2": self.mask2,
+                    "predictions1": self.predictions1,
+                    "predictions2": self.predictions2,
+                    "class_labels": labels,
                 },
-                "last_results": {
-                    "acc_both": curves["acc_both"][-1] if curves and curves["acc_both"] else metrics["acc_both"],
-                    "psnr": curves["recon_bpsnr"][-1] if curves and curves["recon_bpsnr"] else metrics["recon_bpsnr"][0],
-                    "ssim": curves["ssim"][-1] if curves and curves["ssim"] else metrics["ssim"][0],
-                },
-                "data": {
-                    "schema_version": 2,
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                    "notebook_name": notebook_name,
-                    "metadata": run_metadata or {},
-                    "curves": curves,
-                    "metrics": metrics,
-                    "images": {
-                        "mixed_input": self.mixed_input,
-                        "source1_gt": source1_gt,
-                        "source2_gt": source2_gt,
-                        "source1_labels": source1_labels,
-                        "source2_labels": source2_labels,
-                        "source1_estimation": self.source1_estimation,
-                        "source2_estimation": self.source2_estimation,
-                        "mask1": self.mask1,
-                        "mask2": self.mask2,
-                        "predictions1": self.predictions1,
-                        "predictions2": self.predictions2,
-                        "class_labels": labels,
-                    },
-                },
-            }
-            path = Path(data_save_path)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with path.open("w", encoding="utf-8") as file:
-                json.dump(self._json_data(payload), file, ensure_ascii=False, allow_nan=False, indent=2)
+                notebook_name=notebook_name,
+                run_metadata=run_metadata,
+            )
 
         # -------------------- imagen --------------------
         if show_image:
@@ -493,23 +467,6 @@ class CropBaseModel(ABC):
         self.model_params = self.default_params.copy()
 
         return result
-
-    @staticmethod
-    def _json_data(value):
-        """Convert NumPy arrays, eager tensors and scalars to portable JSON data."""
-        if hasattr(value, "numpy"):
-            value = value.numpy()
-        if isinstance(value, np.ndarray):
-            value = value.tolist()
-        if isinstance(value, np.generic):
-            value = value.item()
-        if isinstance(value, dict):
-            return {key: CropBaseModel._json_data(item) for key, item in value.items()}
-        if isinstance(value, (list, tuple)):
-            return [CropBaseModel._json_data(item) for item in value]
-        if isinstance(value, float) and not np.isfinite(value):
-            return {"__float__": str(value)}
-        return value
 
     def _params_text(self, model_params):
         parts = []

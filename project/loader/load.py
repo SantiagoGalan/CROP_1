@@ -3,7 +3,7 @@ from keras.models import load_model
 
 from project.custom_layers.sampling import Sampling
 from project.custom_layers.reshapeLayer import ReshapeLayer
-from project.data.get_data import get_mnist_data
+from project.helper.get_data.get_data import get_mnist_data
 from project.models_definitions.cvae import CVAE
 from project.models_definitions.decoder import Decoder
 from project.models_definitions.encoder import Encoder
