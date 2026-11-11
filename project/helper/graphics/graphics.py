@@ -131,14 +131,14 @@ class Graphics:
                         label_text = class_labels[label_idx]
 
                     # X_FILT_1 (RECONSTRUCTED SOURCE 1)
-                    elif row_labels[row] == "Estimacion 1":
+                    elif row_labels[row] == "Estimación 1":
                         # usar la PREDICCIÓN del modelo, no la imagen reconstruida
                         if prediction_source1 is not None:
                             label_idx = np.argmax(prediction_source1[col])
                             label_text = class_labels[label_idx]
 
                     # X_FILT_2 (RECONSTRUCTED SOURCE 2)
-                    elif row_labels[row] == "Estimacion 2":
+                    elif row_labels[row] == "Estimación 2":
                         if prediction_source2 is not None:
                             label_idx = np.argmax(prediction_source2[col])
                             label_text = class_labels[label_idx]

@@ -325,15 +325,14 @@ class CropBaseModel(ABC):
             curves = None
 
         # -------------------- predicciones finales --------------------
-        if self.predictions1 is None:
-            self.predictions1 = self.predictor.predict(
-                self.source1_estimation, verbose=False
-            )
-
-        if self.predictions2 is None:
-            self.predictions2 = self.predictor.predict(
-                self.source2_estimation, verbose=False
-            )
+        # Evaluar las imagenes finales: filter puede devolver la prediccion
+        # de la entrada del encoder, anterior a las correcciones de salida.
+        self.predictions1 = self.predictor.predict(
+            self.source1_estimation, verbose=False
+        )
+        self.predictions2 = self.predictor.predict(
+            self.source2_estimation, verbose=False
+        )
 
         # -------------------- métricas finales --------------------
         metrics = self._compute_all_metrics(
