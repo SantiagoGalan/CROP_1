@@ -11,7 +11,7 @@ import numpy as np
 def resolve_unmix_save_path(data_save_path=None, *, data_save_dir=None,
                             notebook_name=None, model_name=None, crop_name=None,
                             initial_params=None):
-    """Validate the destination and generate the original timestamped filename."""
+    """Generate a timestamped filename with parameter values at three decimals."""
     if data_save_dir is not None:
         if data_save_path is not None:
             raise ValueError("Use data_save_path or data_save_dir, not both.")
@@ -19,13 +19,17 @@ def resolve_unmix_save_path(data_save_path=None, *, data_save_dir=None,
             raise ValueError("notebook_name is required with data_save_dir.")
         def filename_part(value):
             return re.sub(r"[^\w.\-]+", "-", str(value))
+        def parameter_part(value):
+            if isinstance(value, (int, float, np.integer, np.floating)):
+                return filename_part(f"{value:.3f}")
+            return filename_part(value)
         filename = (
             f"{filename_part(Path(notebook_name).stem)}_"
             f"{filename_part(crop_name)}_"
             f"{filename_part(Path(model_name).stem)}_"
-            f"gamma_{filename_part(initial_params.get('gamma', 'NA'))}_"
-            f"delta_{filename_part(initial_params.get('delta', 'NA'))}_"
-            f"{datetime.now(timezone.utc):%Y%m%d_%H%M%S_%f}.json"
+            f"gamma_{parameter_part(initial_params.get('gamma', 'NA'))}_"
+            f"delta_{parameter_part(initial_params.get('delta', 'NA'))}_"
+            f"{datetime.now(timezone.utc):%Y%m%d_%H%M%S}.json"
         )
         data_save_path = Path(data_save_dir) / filename
     return data_save_path

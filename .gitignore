@@ -36,3 +36,6 @@ pyvenv.cfg
 lib64
 bin
 .png
+
+# JSON files
+*.json

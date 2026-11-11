@@ -1,121 +1,178 @@
-"""Modelo experimental de corrección localizada y compresión local de intensidades."""
+ 
+from abc import abstractmethod
 
-import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
 
 from project.CROP.models.crop_base_model import CropBaseModel
 from project.custom_layers.sampling import Sampling
+import tensorflow as tf
 
 
-class crop3test(CropBaseModel):
-    """Copia experimental de Crop3; no modifica el modelo original."""
+class Crop3Test(CropBaseModel):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.default_params.update({
-            "delta": 0.3,
-            "mode": "local_compression",
-            "window": 5,
-            "object_threshold": 0.5,
-            "local_k": 2.0,
-        })
-        self.debug = False
-        self.debug_max_iteration = 0  # Primera iteración (el bucle empieza en cero).
-        self.debug_max_images = 1
-        self.image_shape = (28, 28)
+    def enable_debug(self):
+        """Activa el registro eager de la primera imagen de cada batch."""
+        self.clear_debug()
+        self._debug_enabled = True
 
-    def show_intermediates(self, stages, title=""):
-        """Muestra un panel por imagen, con escala fija y rango numérico real."""
-        if not self.debug or self.iteration > self.debug_max_iteration:
+    def disable_debug(self):
+        """Detiene el registro sin borrar las imagenes capturadas."""
+        self._debug_enabled = False
+
+    def clear_debug(self):
+        self.debug_images = []
+        self._debug_source = 0
+
+    def _debug_image(self, stage, batch):
+        if not getattr(self, "_debug_enabled", False):
             return
-        first = np.asarray(next(iter(stages.values())))
-        for index in range(min(self.debug_max_images, len(first))):
-            fig, axes = plt.subplots(1, len(stages), figsize=(3 * len(stages), 3),
-                                     squeeze=False)
-            for ax, (name, tensor) in zip(axes[0], stages.items()):
-                img = np.asarray(tensor)[index].reshape(self.image_shape)
-                # La visualización recorta a [0,1]; los títulos muestran el rango real.
-                ax.imshow(img, cmap="gray", vmin=0, vmax=1)
-                ax.set_title(f"{name}\n[{img.min():.3f}, {img.max():.3f}]")
+        # Seleccionar antes de convertir: nunca copia el batch completo a CPU.
+        image = np.asarray(batch[0]).copy()
+        if image.ndim == 1:
+            side = int(np.sqrt(image.size))
+            image = image.reshape(side, side)
+        if image.ndim == 3 and image.shape[-1] == 1:
+            image = image[..., 0]
+        self.debug_images.append({
+            "iteration": getattr(self, "iteration", 0) + 1,
+            "source": getattr(self, "_debug_source", 0),
+            "stage": stage,
+            "image": image,
+        })
+
+    def show_debug_images(self, iteration=None, source=None, columns=4):
+        """Muestra todas las capturas o filtra por iteracion/fuente (desde 1)."""
+        import matplotlib.pyplot as plt
+
+        if columns < 1:
+            raise ValueError("columns debe ser mayor que cero")
+        records = [r for r in getattr(self, "debug_images", [])
+                   if (iteration is None or r["iteration"] == iteration)
+                   and (source is None or r["source"] == source)]
+        if not records:
+            print("Sin imagenes de debug para mostrar. Activa enable_debug() antes de unmix().")
+            return
+        for start in range(0, len(records), columns * 3):
+            page = records[start:start + columns * 3]
+            rows = (len(page) + columns - 1) // columns
+            fig, axes = plt.subplots(rows, columns, figsize=(4 * columns, 3.5 * rows), squeeze=False)
+            for ax, record in zip(axes.flat, page):
+                image = record["image"]
+                finite = image[np.isfinite(image)]
+                low = min(0, float(finite.min())) if finite.size else 0
+                high = max(1, float(finite.max())) if finite.size else 1
+                plot = ax.imshow(image, cmap="gray", vmin=low, vmax=high)
+                ax.set_title(f"Iter. {record['iteration']} · Fuente {record['source']}\n"
+                             f"{record['stage']}", fontsize=9)
                 ax.axis("off")
-            fig.suptitle(f"Iteración {self.iteration} · {title} · imagen {index}")
-            plt.tight_layout()
+                fig.colorbar(plot, ax=ax, fraction=0.046, pad=0.04)
+            for ax in list(axes.flat)[len(page):]:
+                ax.axis("off")
+            fig.tight_layout()
             plt.show()
+            plt.close(fig)
 
-    def local_compression(self, raw, mask, cvae_output):
-        """Estadísticas de vecinos válidos y compresión suave con banda de transición.
+    def mix(self, source1_gt, source2_gt, mix_params):
+        if getattr(self, "_debug_enabled", False):
+            self.clear_debug()
+        return super().mix(source1_gt, source2_gt, mix_params)
 
-        El rango local es una heurística: la máscara aproxima el objeto, no es
-        una segmentación de referencia. Se conservan valores por debajo del
-        umbral local; la banda superior también puede incluir píxeles < 1.
+    @staticmethod
+    def subtract_saturation_border_mean(masked_input, object_threshold=0.05):
+        """Lleva la zona > 1 al promedio de su borde exterior no saturado.
+
+        Usa los ocho vecinos inmediatos y un promedio por imagen y canal.
+        Acepta imagenes cuadradas aplanadas [N, H*W], [N, H, W]
+        o imagenes [N, H, W, C], y conserva la forma de entrada.
+        Si no hay vecinos del objeto, deja la saturacion para el clip habitual.
         """
-        shape = tf.shape(raw)
-        images = tf.reshape(raw, [-1, *self.image_shape, 1])
-        objects = tf.reshape(mask, tf.shape(images)) > self.model_params["object_threshold"]
-        valid = tf.cast(objects & (images < 1.0) & (images > 0.0), images.dtype)
-        window = int(self.model_params["window"])
-        if window < 3 or window % 2 == 0:
-            raise ValueError("window debe ser impar y >= 3")
+        masked_input = tf.convert_to_tensor(masked_input)
+        original_shape = tf.shape(masked_input)
+        if masked_input.shape.rank == 2:
+            side = tf.cast(tf.math.sqrt(tf.cast(original_shape[1], tf.float64)), tf.int32)
+            tf.debugging.assert_equal(
+                side * side, original_shape[1],
+                message="La imagen aplanada debe ser cuadrada",
+            )
+            masked_input = tf.reshape(masked_input, [original_shape[0], side, side, 1])
+        elif masked_input.shape.rank == 3:
+            masked_input = masked_input[..., tf.newaxis]
+        elif masked_input.shape.rank != 4:
+            raise ValueError("Se esperaba una imagen con rango 2, 3 o 4")
 
-        def pool(x):
-            return tf.nn.avg_pool2d(x, ksize=window, strides=1, padding="SAME")
+        saturated = masked_input > 1.0
+        dilated = tf.nn.max_pool2d(
+            tf.cast(saturated, masked_input.dtype),
+            ksize=3, strides=1, padding="SAME",
+        ) > 0
+        border = dilated & ~saturated & (masked_input > object_threshold)
+        border_values = tf.where(border, masked_input, tf.zeros_like(masked_input))
+        count = tf.reduce_sum(
+            tf.cast(border, masked_input.dtype), axis=[1, 2], keepdims=True
+        )
+        border_mean = tf.math.divide_no_nan(
+            tf.reduce_sum(border_values, axis=[1, 2], keepdims=True), count
+        )
+        subtractive_mask = tf.where(
+            saturated & (count > 0),
+            masked_input - border_mean,
+            tf.zeros_like(masked_input),
+        )
+        return tf.reshape(masked_input - subtractive_mask, original_shape)
 
-        count = pool(valid)
-        mean = tf.math.divide_no_nan(pool(images * valid), count)
-        second = tf.math.divide_no_nan(pool(tf.square(images) * valid), count)
-        std = tf.sqrt(tf.maximum(second - tf.square(mean), 0.0))
-        # Sin vecinos válidos se usa la reconstrucción del CVAE como referencia.
-        fallback = tf.reshape(cvae_output, tf.shape(images))
-        mean = tf.where(count > 0, mean, fallback)
-        std = tf.where(count > 0, std, tf.ones_like(std) * 0.05)
-        lower = tf.clip_by_value(mean, 0.05, 0.90)
-        upper = tf.minimum(1.0, tf.maximum(
-            lower + 0.05, mean + self.model_params["local_k"] * std))
-        width = upper - lower
-        excess = tf.nn.relu(images - lower)
-        compressed = lower + width * (-tf.math.expm1(-excess / width))
-        # Incluye siempre raw > 1, aun si la máscara no identifica el objeto.
-        affected = (objects | (images > 1.0)) & (images > lower)
-        result = tf.where(affected, compressed, images)
-        return (tf.reshape(result, shape), tf.reshape(lower, shape),
-                tf.reshape(upper, shape))
+    def filter(self, filter_1 ,mixed_input, alpha, bias, slope,delta):
 
-    def filter(self, filter_1, mixed_input, alpha, bias, slope, delta):
-        residual = 2 * mixed_input - filter_1
-        encoder_input = tf.clip_by_value(residual, 0, 1)
-        condition_encoder = self.predictor(encoder_input, training=False)
+        self._debug_image("Mezcla", mixed_input)
+        self._debug_image("Estimacion de la otra fuente", filter_1)
+        x_mix_filter_1 =  2 * mixed_input - filter_1
+        self._debug_image("2 * mezcla - otra fuente", x_mix_filter_1)
+
+        x_mix_filter_1 = tf.clip_by_value(x_mix_filter_1, 0, 1)
+        self._debug_image("Entrada encoder recortada", x_mix_filter_1)
+      
+        condition_encoder = self.predictor(x_mix_filter_1,  training=False)
         encoded_imgs = self.cvae.encoder(
-            [encoder_input, condition_encoder], training=False)
+            [x_mix_filter_1, condition_encoder], training=False
+        )
+        
         zz_log_var = encoded_imgs[1] + alpha
+
         z = Sampling()((encoded_imgs[0], zz_log_var))
-        cvae_output = self.cvae.decoder([z, condition_encoder], training=False)
-        mask_source1 = tf.sigmoid((cvae_output - bias) * slope)
-        raw = 2 * mixed_input * mask_source1
-        saturated = raw > 1.0  # Antes del clip.
-        mode = self.model_params["mode"]
-        if not 0 <= delta <= 1:
-            raise ValueError("delta debe estar entre 0 y 1")
-        stages = {"Mezcla": mixed_input, "Residual": residual,
-                  "Entrada CVAE": encoder_input, "Reconstrucción": cvae_output,
-                  "Máscara": mask_source1, "Filtrado sin clip": raw,
-                  "Zona saturada": saturated}
-        if mode in ("global", "saturated"):
-            filtered = tf.clip_by_value(raw, 0, 1)
-            corrected = (1 - delta) * filtered + delta * cvae_output
-            result = corrected if mode == "global" else tf.where(
-                saturated, corrected, filtered)
-        elif mode in ("local_compression", "local_compression_cvae"):
-            result, lower, upper = self.local_compression(raw, mask_source1, cvae_output)
-            stages.update({"Rango local inferior": lower, "Rango local superior": upper})
-            if mode == "local_compression_cvae":
-                result = tf.where(saturated,
-                                  (1 - delta) * result + delta * cvae_output, result)
-        else:
-            raise ValueError(f"Modo desconocido: {mode}")
-        stages["Resultado del filtro"] = result
-        self.show_intermediates(stages, title=mode)
-        return result, mask_source1, condition_encoder
+
+        cvae_output = self.cvae.decoder(
+            [z, condition_encoder],  training=False
+        )
+        self._debug_image("Salida decoder", cvae_output)
+    
+        mask_source1 = (cvae_output - bias) * slope
+        self._debug_image("Mascara antes de sigmoid", mask_source1)
+     
+        mask_source1 = tf.sigmoid(mask_source1)
+        self._debug_image("Mascara sigmoid", mask_source1)
+    
+        x_mix_filter_1 = 2 * mixed_input * mask_source1
+        self._debug_image("Imagen enmascarada antes de corregir", x_mix_filter_1)
+        if getattr(self, "_debug_enabled", False):
+            self._debug_image("Zona saturada", tf.cast(x_mix_filter_1 > 1, x_mix_filter_1.dtype))
+            before_correction = x_mix_filter_1[0:1]
+
+        x_mix_filter_1 = self.subtract_saturation_border_mean(
+            x_mix_filter_1,
+            object_threshold=self.model_params.get("saturation_object_threshold", 0.05),
+        )
+
+        self._debug_image("Imagen despues de corregir saturacion", x_mix_filter_1)
+        if getattr(self, "_debug_enabled", False):
+            self._debug_image("Mascara sustractiva", before_correction - x_mix_filter_1[0:1])
+        x_mix_filter_1 = tf.clip_by_value(x_mix_filter_1, 0, 1) 
+        self._debug_image("Imagen corregida recortada", x_mix_filter_1)
+
+        x_mix_filter_1 = x_mix_filter_1 -(x_mix_filter_1-cvae_output)*delta
+        self._debug_image("Correccion delta", x_mix_filter_1)
+
+        return x_mix_filter_1, mask_source1, condition_encoder
+
+
 
     def decode(self):
         alpha_1 = self.model_params["alpha_1"]
@@ -125,6 +182,8 @@ class crop3test(CropBaseModel):
         slope = self.model_params["slope"]
         gamma = self.model_params["gamma"]
         delta = self.model_params["delta"]
+        j = self.iteration
+        self._debug_source = 1
         reconstructed_source1, mask_source1, predictions_1 = (
             self.filter(self.source2_estimation,self.mixed_input, alpha_2, bias, slope,delta)
         )
@@ -138,8 +197,11 @@ class crop3test(CropBaseModel):
         x__x_e = x__x - self.mixed_input
         
         self.source1_estimation = self.source1_estimation - (x__x_e * gamma)
+        self._debug_image("Correccion gamma", self.source1_estimation)
 
         self.source1_estimation = tf.clip_by_value(self.source1_estimation, 0, 1)
+        self._debug_image("Estimacion final", self.source1_estimation)
+        self._debug_source = 2
         reconstructed_source2, mask_source2, predictions_2 = (
             self.filter(reconstructed_source1 ,self.mixed_input, alpha_1, bias, slope,delta)
         )
@@ -155,12 +217,8 @@ class crop3test(CropBaseModel):
         x__x_e = x__x - self.mixed_input
 
         self.source2_estimation = self.source2_estimation - (x__x_e * gamma)
+        self._debug_image("Correccion gamma", self.source2_estimation)
 
 
         self.source2_estimation = tf.clip_by_value(self.source2_estimation, 0, 1)
-
-        self.show_intermediates({
-            "Mezcla": self.mixed_input,
-            "Fuente 1 después de gamma": self.source1_estimation,
-            "Fuente 2 después de gamma": self.source2_estimation,
-        }, title="Corrección de mezcla")
+        self._debug_image("Estimacion final", self.source2_estimation)

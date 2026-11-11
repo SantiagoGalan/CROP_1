@@ -330,3 +330,18 @@ def confusion_matrix_plot(
     # 5. Reporte
     # =========================
     print(classification_report(y_true, y_pred, target_names=label_names))
+
+
+import re
+
+
+def reconstruction_model_label(model):
+    name = getattr(model, "loaded_model_name", model.name)
+    match = re.search(r"int_(\d+)_lat_(\d+)(?:_beta_(\d+(?:[._]\d+)?))?", name)
+    if match is None:
+        return name
+    inter, lat, beta = match.groups()
+    values = [inter, lat]
+    if beta is not None:
+        values.append(beta.replace("_", "."))
+    return f"cave({';'.join(values)})"
