@@ -322,6 +322,8 @@ class CropBaseModel(ABC):
                 #print("numero de iteracion: ",i)
                 self.iteration=i
                 self.decode()
+                if self.should_stop_iterations():
+                    break
             curves = None
 
         # -------------------- predicciones finales --------------------
@@ -540,7 +542,14 @@ class CropBaseModel(ABC):
                     )
                     curves["mask_bpsnr"].append(mask_psnr_mean)
 
+            if self.should_stop_iterations():
+                break
+
         return curves
+
+    def should_stop_iterations(self):
+        """Las variantes pueden detener el bucle después de una iteración."""
+        return False
 
     def metric_curve(
         self,
