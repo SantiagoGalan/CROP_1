@@ -21,7 +21,6 @@ class Crop3Test3(Crop3Test):
             "gamma": 0.0,
             "saturation_object_threshold": 0.05,
             "saturation_window": 5,
-            "saturation_inner_weight": 0.9,
             "confidence_projection": True,
             "confidence_scale": 0.1,
             "confidence_floor": 0.1,
@@ -36,8 +35,6 @@ class Crop3Test3(Crop3Test):
         window = mix_params["saturation_window"]
         if not isinstance(window, int) or window < 3 or window % 2 == 0:
             raise ValueError("saturation_window debe ser impar y >= 3")
-        if not 0 <= mix_params["saturation_inner_weight"] <= 1:
-            raise ValueError("saturation_inner_weight debe estar en [0, 1]")
         if mix_params["confidence_scale"] <= 0:
             raise ValueError("confidence_scale debe ser positivo")
         if not 0 < mix_params["confidence_floor"] <= 1:
@@ -49,17 +46,14 @@ class Crop3Test3(Crop3Test):
         return super().mix(source1_gt, source2_gt, mix_params)
 
     @staticmethod
-    def correct_local_saturation(values, object_threshold=0.05, window=5, inner_weight=0.9):
-        """Combina el promedio central 3x3 y el del anillo exterior.
+    def correct_local_saturation(values, object_threshold=0.05, window=5):
+        """Promedio simple de vecinos válidos dentro de la ventana.
 
-        inner_weight es el peso total del centro; el anillo recibe 1-peso.
-        Cada promedio usa solo vecinos válidos. Se renormalizan los pesos de
-        las regiones disponibles; sin peso válido se conserva el clip a 1.
+        Todos los vecinos válidos tienen el mismo peso. Sin vecinos válidos,
+        el valor saturado se recorta a 1.
         """
         if not isinstance(window, int) or window < 3 or window % 2 == 0:
             raise ValueError("window debe ser impar y >= 3")
-        if not 0 <= inner_weight <= 1:
-            raise ValueError("inner_weight debe estar en [0, 1]")
         x = tf.convert_to_tensor(values)
         shape = tf.shape(x)
         if x.shape.rank == 2:
@@ -72,26 +66,10 @@ class Crop3Test3(Crop3Test):
             raise ValueError("Se esperaba rango 2, 3 o 4")
         valid = (x <= 1) & (x > object_threshold)
         weights = tf.cast(valid, x.dtype)
-        values = tf.where(valid, x, 0)
-        inner_kernel = tf.ones([3, 3, 1, 1], dtype=x.dtype)
-        padding = (window - 3) // 2
-        outer_kernel = tf.ones([window, window, 1, 1], dtype=x.dtype) - tf.pad(
-            inner_kernel, [[padding, padding], [padding, padding], [0, 0], [0, 0]]
-        )
-
-        def region_mean(kernel):
-            kernel = tf.tile(kernel, [1, 1, tf.shape(x)[-1], 1])
-            total = tf.nn.depthwise_conv2d(values, kernel, [1, 1, 1, 1], "SAME")
-            count = tf.nn.depthwise_conv2d(weights, kernel, [1, 1, 1, 1], "SAME")
-            return tf.math.divide_no_nan(total, count), tf.cast(count > 0, x.dtype)
-
-        inner_mean, inner_available = region_mean(inner_kernel)
-        outer_mean, outer_available = region_mean(outer_kernel)
-        inner_mass = inner_weight * inner_available
-        outer_mass = (1 - inner_weight) * outer_available
-        mass = inner_mass + outer_mass
-        mean = tf.math.divide_no_nan(inner_mass * inner_mean + outer_mass * outer_mean, mass)
-        corrected = tf.where((x > 1) & (mass > 0), mean, x)
+        total = tf.nn.avg_pool2d(tf.where(valid, x, 0), window, 1, "SAME")
+        count = tf.nn.avg_pool2d(weights, window, 1, "SAME")
+        mean = tf.math.divide_no_nan(total, count)
+        corrected = tf.where((x > 1) & (count > 0), mean, x)
         return tf.reshape(tf.clip_by_value(corrected, 0, 1), shape)
 
     def filter(self, other, mixed_input, alpha, bias, slope, delta):
@@ -106,7 +84,6 @@ class Crop3Test3(Crop3Test):
         masked = mixed_input * mask / weight
         corrected = self.correct_local_saturation(
             masked, p["saturation_object_threshold"], p["saturation_window"],
-            p["saturation_inner_weight"],
         )
         estimate = (1 - delta) * corrected + delta * decoded
         # Un error grande frente al prior permite una corrección mayor.
