@@ -9,8 +9,9 @@ from project.custom_layers.sampling import Sampling
 class Crop3Test3(Crop3Test):
     """La confianza es una heurística de concordancia con el CVAE, no calibrada.
 
-    early_stop_tolerance=0 desactiva la parada; confidence_projection=False
-    recupera la proyección euclídea. No usa fuentes originales para refinar.
+    Usa siempre muestreo latente, como Crop2, y todas las iteraciones pedidas.
+    confidence_projection=False recupera la proyección euclídea.
+    No usa fuentes originales para refinar.
     """
 
     def __init__(self, *args, **kwargs):
@@ -23,10 +24,6 @@ class Crop3Test3(Crop3Test):
             "confidence_projection": True,
             "confidence_scale": 0.1,
             "confidence_floor": 0.1,
-            "early_stop_tolerance": 1e-4,
-            "early_stop_patience": 3,
-            "min_iterations": 5,
-            "deterministic_latent": False,
         })
         self.sampling = Sampling()
 
@@ -44,15 +41,8 @@ class Crop3Test3(Crop3Test):
             raise ValueError("confidence_floor debe estar en (0, 1]")
         if not 0 <= mix_params["delta"] <= 1:
             raise ValueError("delta debe estar en [0, 1]")
-        if mix_params["early_stop_tolerance"] < 0:
-            raise ValueError("early_stop_tolerance debe ser no negativo")
-        for key in ("early_stop_patience", "min_iterations"):
-            if not isinstance(mix_params[key], int) or mix_params[key] < 1:
-                raise ValueError(f"{key} debe ser un entero positivo")
         self.iterations_run = 0
         self.change_history = []
-        self._stable_steps = 0
-        self.converged = False
         return super().mix(source1_gt, source2_gt, mix_params)
 
     @staticmethod
@@ -86,7 +76,7 @@ class Crop3Test3(Crop3Test):
         residual = tf.clip_by_value((mixed_input - (1 - weight) * other) / weight, 0, 1)
         condition = self.predictor(residual, training=False)
         encoded = self.cvae.encoder([residual, condition], training=False)
-        z = encoded[0] if p["deterministic_latent"] else self.sampling((encoded[0], encoded[1] + alpha))
+        z = self.sampling((encoded[0], encoded[1] + alpha))
         decoded = self.cvae.decoder([z, condition], training=False)
         mask = tf.sigmoid((decoded - bias) * slope)
         masked = mixed_input * mask / weight
@@ -158,13 +148,6 @@ class Crop3Test3(Crop3Test):
         change = float(tf.reduce_max(tf.maximum(*changes)).numpy())
         self.change_history.append(change)
         self.iterations_run += 1
-        stable = p["early_stop_tolerance"] > 0 and change <= p["early_stop_tolerance"]
-        self._stable_steps = self._stable_steps + 1 if stable else 0
-        self.converged = (self.iterations_run >= p["min_iterations"]
-                          and self._stable_steps >= p["early_stop_patience"])
         for source in (1, 2):
             self._debug_source = source
             self._debug_image("Proyeccion de mezcla", getattr(self, f"source{source}_estimation"))
-
-    def should_stop_iterations(self):
-        return self.converged
