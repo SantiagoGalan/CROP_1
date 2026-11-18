@@ -32,6 +32,7 @@ class Crop3Test3(Crop3Test):
 
     def mix(self, source1_gt, source2_gt, mix_params):
         a = mix_params["alpha_mix"]
+        #asserst
         if not 0 < a < 1:
             raise ValueError("Crop3Test3 requiere 0 < alpha_mix < 1")
         window = mix_params["saturation_window"]
