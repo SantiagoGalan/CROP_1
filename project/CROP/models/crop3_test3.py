@@ -47,9 +47,9 @@ class Crop3Test3(Crop3Test):
 
     @staticmethod
     def correct_local_saturation(values, object_threshold=0.05, window=5):
-        """Promedio simple de vecinos válidos dentro de la ventana.
+        """Promedio local de una sola pasada sobre los vecinos originales.
 
-        Todos los vecinos válidos tienen el mismo peso. Sin vecinos válidos,
+        Los píxeles corregidos no se reutilizan. Sin vecinos válidos,
         el valor saturado se recorta a 1.
         """
         if not isinstance(window, int) or window < 3 or window % 2 == 0:
