@@ -10,7 +10,7 @@ class Crop4(CropBaseModel):
     """Usa alpha_mix en el filtro y la proyección.
 
     La confianza por píxel mide concordancia con la salida del CVAE.
-    confidence_projection=False recupera la proyección uniforme.
+    La proyección pondera las correcciones por esa confianza.
     """
 
     def __init__(self, *args, **kwargs):
@@ -18,7 +18,6 @@ class Crop4(CropBaseModel):
         self.default_params.pop("gamma", None)
         self.default_params.update({
             "delta": 0.353,
-            "confidence_projection": True,
             "confidence_scale": 0.1,
             "confidence_floor": 0.1,
         })
@@ -46,10 +45,7 @@ class Crop4(CropBaseModel):
             return
 
         mixed = self.mixed_input
-        if params["confidence_projection"]:
-            c1, c2 = self.confidence1, self.confidence2
-        else:
-            c1, c2 = tf.ones_like(x), tf.ones_like(y)
+        c1, c2 = self.confidence1, self.confidence2
 
         error = a * x + b * y - mixed
         denominator = a * a / c1 + b * b / c2
