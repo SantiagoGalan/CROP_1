@@ -7,7 +7,7 @@ from project.custom_layers.sampling import Sampling
 
 
 class Crop4(CropBaseModel):
-    """Usa alpha_mix en el filtro, la corrección gamma y la proyección.
+    """Usa alpha_mix en el filtro y la proyección.
 
     La confianza por píxel mide concordancia con la salida del CVAE.
     confidence_projection=False recupera la proyección uniforme.
@@ -15,6 +15,7 @@ class Crop4(CropBaseModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.default_params.pop("gamma", None)
         self.default_params.update({
             "delta": 0.353,
             "confidence_projection": True,
@@ -110,19 +111,13 @@ class Crop4(CropBaseModel):
             floor = tf.fill(tf.shape(mixed), tf.cast(p["confidence_floor"], mixed.dtype))
             self.confidence1, self.confidence2 = (1 - b * (1 - floor), 1 - a * (1 - floor))
         else:
-            source2 = self.source2_estimation
-            source1, self.mask1, self.predictions1, self.confidence1 = self.filter(
-                source2, mixed, p["alpha_2"], p["bias"], p["slope"], p["delta"], weight=a
+            self.source1_estimation, self.mask1, self.predictions1, self.confidence1 = self.filter(
+                self.source2_estimation, mixed, p["alpha_2"], p["bias"], p["slope"], p["delta"], weight=a
             )
-            error1 = a * source1 + b * source2 - mixed
-            self.source1_estimation = tf.clip_by_value(source1 - p["gamma"] * error1, 0, 1)
 
-            # El segundo filtro usa la primera estimación antes de corregirla con gamma.
-            source2, self.mask2, self.predictions2, self.confidence2 = self.filter(
-                source1, mixed, p["alpha_1"], p["bias"], p["slope"], p["delta"], weight=b
+            self.source2_estimation, self.mask2, self.predictions2, self.confidence2 = self.filter(
+                self.source1_estimation, mixed, p["alpha_1"], p["bias"], p["slope"], p["delta"], weight=b
             )
-            error2 = a * self.source1_estimation + b * source2 - mixed
-            self.source2_estimation = tf.clip_by_value(source2 - p["gamma"] * error2, 0, 1)
             self.enforce_mixture()
         p["alpha_2"] *= p["beta"]
         p["alpha_1"] *= p["beta"]
