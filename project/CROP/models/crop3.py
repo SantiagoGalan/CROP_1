@@ -68,7 +68,7 @@ class Crop3(CropBaseModel):
 
         self.source1_estimation = tf.clip_by_value(self.source1_estimation, 0, 1)
         reconstructed_source2, mask_source2, predictions_2 = (
-            self.filter(reconstructed_source1 ,self.mixed_input, alpha_1, bias, slope,delta)
+            self.filter(self.source1_estimation ,self.mixed_input, alpha_1, bias, slope,delta)
         )
 
         self.source2_estimation = reconstructed_source2
