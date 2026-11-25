@@ -39,3 +39,6 @@ bin
 
 # JSON files
 *.json
+
+# Resultados de los experimentos definitivos
+/project/definitive_experiments/results/
