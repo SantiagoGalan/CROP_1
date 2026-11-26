@@ -54,18 +54,25 @@ class ACrop2(CropBaseModel):
         
      
         self.source1_estimation = reconstructed_source1
+
+
         self.mask1 = mask_source1
         self.predictions1 = predictions_1 
         self.model_params["alpha_2"] = alpha_2 * beta
 
-        x__x = (self.source1_estimation + self.source2_estimation) / 2
+        mix_estimation = (self.source1_estimation + self.source2_estimation) / 2
 
-        x__x_e = x__x - self.mixed_input
+        mixes_error = mix_estimation - self.mixed_input
 
-        self.source1_estimation = self.source1_estimation - (x__x_e * gamma)
+        correction = mixes_error * gamma
+        self.source1_estimation = self.source1_estimation - correction
 
         self.source1_estimation = tf.clip_by_value(
             self.source1_estimation, clip_value_min=0, clip_value_max=1
+        )
+        self._print_center_pixel_correction(
+            1, reconstructed_source1, mix_estimation, mixes_error, gamma, correction,
+            self.source1_estimation,
         )
 
         reconstructed_source2, mask_source2, predictions_2 = (
@@ -79,11 +86,16 @@ class ACrop2(CropBaseModel):
         self.predictions2 = predictions_2 
         self.model_params["alpha_1"] = alpha_1 * beta
 
-        x__x = (self.source1_estimation + self.source2_estimation) / 2
-        x__x_e = x__x - self.mixed_input
+        mix_estimation = (self.source1_estimation + self.source2_estimation) / 2
+        mixes_error = mix_estimation - self.mixed_input
 
-        self.source2_estimation = self.source2_estimation - (x__x_e * gamma)
+        correction = mixes_error * gamma
+        self.source2_estimation = self.source2_estimation - correction
 
         self.source2_estimation = tf.clip_by_value(
             self.source2_estimation, clip_value_min=0, clip_value_max=1
+        )
+        self._print_center_pixel_correction(
+            2, reconstructed_source2, mix_estimation, mixes_error, gamma, correction,
+            self.source2_estimation,
         )

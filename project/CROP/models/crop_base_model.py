@@ -1,4 +1,5 @@
 import numpy as np
+import tensorflow as tf
 from project.helper.save_data import resolve_unmix_save_path, save_unmix_data
 from project.helper.graphics.graphics import Graphics
 from project.metrics.metrics import Metrics
@@ -251,15 +252,20 @@ class CropBaseModel(ABC):
     run_metadata=None,
     data_save_dir=None,
     notebook_name=None,
+    *,
+    debug=False,
 ):
         """Run separation; optionally persist plotting data and run metadata as JSON.
 
         data_save_path also records all iteration curves without requiring plots.
         Non-finite numbers are encoded as {"__float__": "inf"/"-inf"/"nan"}.
+        debug displays the center-pixel corrections for Crop2 and ACrop2.
         """
 
         # -------------------- params --------------------
         self.model_params = {**self.default_params.copy(), **(params or {})}
+        if debug:
+            self.model_params["debug"] = True
         initial_params = self.model_params.copy()
         data_save_path = resolve_unmix_save_path(
             data_save_path,
@@ -468,6 +474,27 @@ class CropBaseModel(ABC):
         self.model_params = self.default_params.copy()
 
         return result
+
+    def _print_center_pixel_correction(
+        self, source, filtered, mix_estimation, mixes_error, gamma, correction, corrected
+    ):
+        if not self.model_params.get("debug", False):
+            return
+
+        values = (self.mixed_input, filtered, mix_estimation, mixes_error, correction, corrected)
+        centers = np.column_stack([tf.reshape(value, (-1, 28, 28))[:, 14, 14] for value in values])
+        lines = [
+            f"{type(self).__name__} | iteración {self.iteration + 1} | fuente {source} "
+            f"| píxel (14, 14) | gamma={gamma:.6g}"
+        ]
+        for image, (mixed, initial, estimated, error, subtracted, final) in enumerate(centers, start=1):
+            lines.append(
+                f"  imagen {image} | mezcla={mixed:.6f} | filtro={initial:.6f} "
+                f"| mezcla estimada={estimated:.6f} | error={error:+.6f} "
+                f"| corrección antes del recorte={-subtracted:+.6f} "
+                f"| cambio aplicado={final - initial:+.6f} | final={final:.6f}"
+            )
+        print("\n".join(lines))
 
     def _params_text(self, model_params):
         parts = []
