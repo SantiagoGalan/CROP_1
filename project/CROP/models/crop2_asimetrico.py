@@ -6,7 +6,7 @@ import tensorflow as tf
 
 class ACrop2(CropBaseModel):
 
-    def filter(self, filter_1, mixed_input, alpha,bias,slope): 
+    def filter(self, filter_1, mixed_input, alpha, bias, slope, *, debug_stages=None):
         #best_filtered_var_sigmoid
 
         x_mix_filter_1 = 2 * mixed_input - filter_1
@@ -16,6 +16,12 @@ class ACrop2(CropBaseModel):
         condition_encoder = self.predictor(x_mix_filter_1, training=False)
     
         condition_decoder_1 = condition_encoder
+
+        if debug_stages is not None:
+            debug_stages.extend([
+                ("filter_1\n(entrada al filtro)", filter_1),
+                ("x_mix_filter_1\n(entrada al autoencoder)", x_mix_filter_1),
+            ])
 
         encoded_imgs = self.cvae.encoder(
             [x_mix_filter_1, condition_encoder], training=0
@@ -28,6 +34,8 @@ class ACrop2(CropBaseModel):
         mask_source1 = self.cvae.decoder(
             [z, condition_decoder_1], training=0
         )
+        if debug_stages is not None:
+            debug_stages.append(("Salida del autoencoder", mask_source1))
         mask_source1 = (mask_source1 - bias) * slope
         mask_source1 = tf.sigmoid(mask_source1)
 
@@ -36,6 +44,11 @@ class ACrop2(CropBaseModel):
             x_mix_filter_1, clip_value_min=0, clip_value_max=1
         )
 
+        if debug_stages is not None:
+            debug_stages.extend([
+                ("mask_source1", mask_source1),
+                ("x_mix_filter_1\n(después de la máscara)", x_mix_filter_1),
+            ])
         return (x_mix_filter_1, mask_source1, condition_encoder)
 
 
@@ -47,9 +60,13 @@ class ACrop2(CropBaseModel):
         bias = self.model_params["bias"]
         slope = self.model_params["slope"]
         gamma = self.model_params["gamma"]
+        debug_stages = [] if self.model_params.get("debug") else None
 
         reconstructed_source1, mask_source1, predictions_1 = (
-            self.filter(self.source2_estimation, self.mixed_input, alpha_2,bias,slope)
+            self.filter(
+                self.source2_estimation, self.mixed_input, alpha_2, bias, slope,
+                debug_stages=debug_stages,
+            )
         )
         
      
@@ -70,14 +87,16 @@ class ACrop2(CropBaseModel):
         self.source1_estimation = tf.clip_by_value(
             self.source1_estimation, clip_value_min=0, clip_value_max=1
         )
-        self._print_center_pixel_correction(
-            1, reconstructed_source1, mix_estimation, mixes_error, gamma, correction,
-            self.source1_estimation,
-        )
+        if debug_stages is not None:
+            debug_stages.extend([
+                ("reconstructed_source1", reconstructed_source1),
+                ("self.source1_estimation\n(después de gamma)", self.source1_estimation),
+            ])
 
         reconstructed_source2, mask_source2, predictions_2 = (
             self.filter(
-                reconstructed_source1 , self.mixed_input, alpha_1,bias,slope
+                reconstructed_source1, self.mixed_input, alpha_1, bias, slope,
+                debug_stages=debug_stages,
             )
         )
         
@@ -95,7 +114,12 @@ class ACrop2(CropBaseModel):
         self.source2_estimation = tf.clip_by_value(
             self.source2_estimation, clip_value_min=0, clip_value_max=1
         )
-        self._print_center_pixel_correction(
-            2, reconstructed_source2, mix_estimation, mixes_error, gamma, correction,
-            self.source2_estimation,
-        )
+        if debug_stages is not None:
+            debug_stages.extend([
+                ("reconstructed_source2", reconstructed_source2),
+                ("self.source2_estimation\n(después de gamma)", self.source2_estimation),
+            ])
+            self.graphicator.crop2_debug_plot(
+                debug_stages,
+                 title=f"{type(self).__name__} | Mezcla 1 | Iteración {self.iteration + 1}",
+            )

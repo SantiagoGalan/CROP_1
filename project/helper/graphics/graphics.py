@@ -5,6 +5,21 @@ import tensorflow as tf
 
 class Graphics:
 
+    @staticmethod
+    def crop2_debug_plot(stages, *, title):
+        columns = len(stages) // 2
+        fig, axes = plt.subplots(2, columns, figsize=(18, 7), constrained_layout=True)
+        fig.suptitle(title)
+        for index, (ax, (label, values)) in enumerate(zip(axes.flat, stages)):
+            if index % columns == 0:
+                source = index // columns + 1
+                label = f"Filtro {source} · Fuente {source}\n{label}"
+            ax.set_title(label)
+            ax.imshow(np.asarray(values[0]).reshape(28, 28), cmap="gray", vmin=0, vmax=1)
+            ax.set_axis_off()
+        plt.show()
+        plt.close(fig)
+
     @classmethod
     def complete_plot(
         cls,
