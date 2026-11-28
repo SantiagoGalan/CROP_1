@@ -14,6 +14,7 @@ $py.class
 instance/_full.py
 instance/.db
 *.db
+*.sqlite3
 
 # Coverage output
 .coverage

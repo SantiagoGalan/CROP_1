@@ -27,9 +27,8 @@ class Crop5(CropBaseModel):
         mixed = self.mixed_input
         total_distance = self.distance1 + self.distance2
         fraction1 = tf.math.divide_no_nan(self.distance1, total_distance)
-        # Si las dos distancias son cero, ambas fuentes reciben el mismo ajuste.
-        fraction1 = tf.where(total_distance > 0, fraction1, 0.5)
 
+        fraction1 = tf.where(total_distance > 0, fraction1, 0.5)
         error = a * (x + y) - mixed
         projected = x - fraction1 * error / a
         lower = tf.maximum(0., (mixed - a) / a)
@@ -42,7 +41,7 @@ class Crop5(CropBaseModel):
     def mix(self, source1_gt, source2_gt, mix_params):
 
         if mix_params["alpha_mix"] != 0.5:
-            raise ValueError("Crop4 requiere alpha_mix = 0.5")
+            raise ValueError("Crop5 requiere alpha_mix = 0.5")
         self.distance1 = None
         self.distance2 = None
         return super().mix(source1_gt, source2_gt, mix_params)
@@ -53,15 +52,11 @@ class Crop5(CropBaseModel):
         encoded = self.cvae.encoder([residual, condition], training=False)
         z = Sampling()((encoded[0], encoded[1] + alpha))
         decoded = self.cvae.decoder([z, condition], training=False)
-        # mask = tf.sigmoid((decoded - bias) * slope)
-        mask = tf.cast(decoded >= bias, decoded.dtype)
-        estimate = tf.clip_by_value(mixed_input * mask / weight, 0, 1)             
-        estimate = estimate - (estimate - decoded) * delta
-        # p = self.model_params
-        # confidence = tf.maximum(
-        #     p["confidence_floor"],
-        #     tf.exp(-tf.abs(estimate - decoded) / p["confidence_scale"]),
-        # )
+        mask = tf.sigmoid((decoded - bias) * slope)
+        #estimate = tf.clip_by_value(mixed_input * mask / weight, 0, 1)
+        estimate = mixed_input * mask / weight             
+        #estimate = estimate - (estimate - decoded) * delta
+        #estimate = tf.clip_by_value(estimate, 0, 1)
         distance = tf.abs(estimate - decoded)
         return estimate, mask, condition, distance
 
