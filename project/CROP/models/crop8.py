@@ -1,4 +1,4 @@
-"""CROP con correcciones gamma y delta y proyección por confianza."""
+"""CROP con correcciones gamma y delta y proyección por distancia al CVAE."""
 
 import tensorflow as tf
 
@@ -11,18 +11,10 @@ class Crop8(CropBaseModel):
         super().__init__(*args, **kwargs)
         self.default_params["gamma"] = 1.5
         self.default_params["delta"] = 0.353
-        self.default_params["confidence_scale"] = 0.1
-        self.default_params["confidence_floor"] = 0.01
 
     def mix(self, source1_gt, source2_gt, mix_params):
         if mix_params["alpha_mix"] != 0.5:
             raise ValueError("Crop8 requiere alpha_mix = 0.5")
-        scale = mix_params.get("confidence_scale", self.default_params["confidence_scale"])
-        floor = mix_params.get("confidence_floor", self.default_params["confidence_floor"])
-        if scale <= 0:
-            raise ValueError("confidence_scale debe ser positivo")
-        if not 0 < floor <= 1:
-            raise ValueError("confidence_floor debe estar en (0, 1]")
         return super().mix(source1_gt, source2_gt, mix_params)
 
     def filter(self, other, mixed_input, alpha, bias, slope):
@@ -49,28 +41,30 @@ class Crop8(CropBaseModel):
         p = self.model_params
         mixed = tf.convert_to_tensor(self.mixed_input)
 
-        x, self.mask1, self.predictions1, decoded1 = self.filter(
+        self.source1_estimation, self.mask1, self.predictions1, decoded1 = self.filter(
             self.source2_estimation, mixed, p["alpha_2"], p["bias"], p["slope"]
         )
-        y, self.mask2, self.predictions2, decoded2 = self.filter(
-            x, mixed, p["alpha_1"], p["bias"], p["slope"]
+        self.source2_estimation, self.mask2, self.predictions2, decoded2 = self.filter(
+            self.source1_estimation, mixed, p["alpha_1"], p["bias"], p["slope"]
         )
+        self.enforce_mixture(decoded1, decoded2)
 
-        scale, floor = p["confidence_scale"], p["confidence_floor"]
-        c1 = tf.maximum(floor, tf.exp(-tf.abs(x - decoded1) / scale))
-        c2 = tf.maximum(floor, tf.exp(-tf.abs(y - decoded2) / scale))
+    def enforce_mixture(self, decoded1, decoded2):
+        a = self.model_params["alpha_mix"]
+        x, y = self.source1_estimation, self.source2_estimation
 
-        a = p["alpha_mix"]
-        b = 1 - a
-        error = a * x + b * y - mixed
-        denominator = a * a / c1 + b * b / c2
-        projected = x - (a / c1) * error / denominator
+        mixed = self.mixed_input
+        distance1 = tf.abs(x - decoded1)
+        distance2 = tf.abs(y - decoded2)
+        total_distance = distance1 + distance2
+        fraction1 = tf.math.divide_no_nan(distance1, total_distance)
+        fraction1 = tf.where(total_distance > 0, fraction1, 0.5)
 
-        lower = tf.maximum(0., (mixed - b) / a)
+        error = a * (x + y) - mixed
+        projected = x - fraction1 * error / a
+        lower = tf.maximum(0., (mixed - a) / a)
         upper = tf.minimum(1., mixed / a)
-        projected_x = tf.clip_by_value(projected, lower, upper)
-        projected_y = (mixed - a * projected_x) / b
+        x = tf.clip_by_value(projected, lower, upper)
+        y = (mixed - a * x) / a
 
-        needs_projection = tf.abs(error) > 0.01
-        self.source1_estimation = tf.where(needs_projection, projected_x, x)
-        self.source2_estimation = tf.where(needs_projection, projected_y, y)
+        self.source1_estimation, self.source2_estimation = x, y

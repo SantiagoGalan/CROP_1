@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
 import numpy as np
 import tensorflow as tf
 
@@ -49,6 +50,7 @@ class Graphics:
         # Calcular escala global para reconstructed_error
         error_vmin = float(tf.reduce_min(reconstructed_error).numpy())
         error_vmax = float(tf.reduce_max(reconstructed_error).numpy())
+        error_norm = Normalize(vmin=error_vmin, vmax=error_vmax)
 
         images = [
             mixed_input,
@@ -75,6 +77,7 @@ class Graphics:
             "Máscara 2",
             #"Mejor estimación",
         ]
+        error_row = row_labels.index("Error entre \n mezclas")
 
         num_rows = len(images)
         num_cols = images[0].shape[0] if len(images[0].shape) > 1 else 1
@@ -98,12 +101,13 @@ class Graphics:
             BIG_HIGHT, BIG_HIGHT, BIG_HIGHT # 7-9: mask_1, mask_2, x_best_pred
         ]
         
-        gs = plt.GridSpec(len(row_heights), num_cols + 1, 
+        gs = plt.GridSpec(len(row_heights), num_cols + 2,
                           height_ratios=row_heights,
+                          width_ratios=[1] * (num_cols + 1) + [0.25],
                           hspace=0.3,
                           wspace=0.1)
         
-        fig = plt.figure(figsize=(fig_width + 2, fig_height + 2))
+        fig = plt.figure(figsize=(fig_width + 3, fig_height + 2))
         
         # Mapeo de filas originales a filas en la grilla
         grid_row_map = [0, 2, 3, 5, 6, 8, 9, 11, 12, 13]
@@ -126,8 +130,8 @@ class Graphics:
                     img = tf.reshape(img, (img_size, img_size))
 
                 # Usar escala global para recon_error
-                if row_labels[row] == "Error entre \n mezclas":
-                    ax.imshow(img.numpy(), cmap="gray", vmin=error_vmin, vmax=error_vmax)
+                if row == error_row:
+                    error_image = ax.imshow(img.numpy(), cmap="gray", norm=error_norm)
                 else:
                     ax.imshow(img.numpy(), cmap="gray")
 
@@ -171,7 +175,10 @@ class Graphics:
                             transform=ax.transAxes,
                         )
 
-        
+        error_ticks = np.unique(np.linspace(error_vmin, error_vmax, 3))
+        color_ax = fig.add_subplot(gs[grid_row_map[error_row], -1])
+        error_bar = fig.colorbar(error_image, cax=color_ax, ticks=error_ticks, format="%.3g")
+        error_bar.ax.tick_params(labelsize=8)
 
         # Construir título automáticamente si se proporciona dataset
         if dataset is not None:

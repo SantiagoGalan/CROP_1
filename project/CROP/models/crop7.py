@@ -39,7 +39,8 @@ class Crop7(CropBaseModel):
         remaining_error = (estimate + other) / 2 - mixed_input
         delta = self.model_params["delta"]
         corrected = estimate + delta * (decoded - estimate)
-        estimate = tf.where(remaining_error>0.01, corrected, estimate)
+        estimate = tf.where(remaining_error>0.17, corrected, estimate)
+
 
         return estimate, mask, condition, decoded
 
